@@ -35,15 +35,21 @@ from app.gateway.providers.fal_video_provider import (
 )
 from app.gateway.providers.video_provider import VideoJobState, VideoRequest
 
-# Imagen de ejemplo estable. La de la propia documentación de fal.ai
-# (storage.googleapis.com/falserverless/...) resultó no ser descargable por
-# sus propios servidores al probarla — confirmado con un 422
-# "file_download_error". Wikimedia Commons no restringe hotlinking y es
-# mucho más estable para este tipo de verificación.
-IMAGEN_DE_PRUEBA = (
-    "https://upload.wikimedia.org/wikipedia/commons/e/ec/"
-    "Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg"
+# Imagen de prueba alojada EN LA PROPIA CDN de fal.ai (fal.media) — es la
+# manzana generada en la primera verificación de imagen (probar_fal.py).
+#
+# Se probaron dos fuentes externas antes de llegar aquí y ambas fallaron al
+# descargarse desde los servidores de fal.ai: la de su propia documentación
+# (storage.googleapis.com, el objeto ya no existe) y Wikimedia Commons
+# (que rechaza descargas automatizadas sin un identificador de programa
+# reconocible). Una imagen ya alojada en fal.media elimina el problema de
+# raíz: es la misma infraestructura que va a leerla.
+#
+# Se puede pasar otra URL como argumento: python probar_fal_video.py <url>
+IMAGEN_DE_PRUEBA_DEFECTO = (
+    "https://v3b.fal.media/files/b/0aa762b9/52N8HvRdfzZOCVkL9EBYC_KarHwVwx.png"
 )
+IMAGEN_DE_PRUEBA = sys.argv[1] if len(sys.argv) > 1 else IMAGEN_DE_PRUEBA_DEFECTO
 DURACION_SEC = 5.0
 COSTO_ESTIMADO = 5 * 0.084
 
