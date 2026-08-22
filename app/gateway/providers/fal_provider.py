@@ -1,31 +1,31 @@
 """
-Proveedor de imagen vía fal.ai.
+Proveedor de imagen vía fal.ai — Nano Banana Pro (Gemini 3 Pro Image).
 
-fal.ai expone modelos de terceros —incluido Nano Banana Pro— bajo un patrón
-REST único y estable: POST a `https://fal.run/{model_id}` con la clave en el
-header `Authorization`. Eso es lo que hace este proveedor.
+Verificado contra la documentación de fal.ai (https://fal.ai/models/fal-ai/
+nano-banana-pro/api y .../edit/api). Dos endpoints distintos según si hay
+imágenes de referencia:
 
-## Lo que NO está verificado
+  Sin referencias  → fal-ai/nano-banana-pro        (texto a imagen)
+  Con referencias  → fal-ai/nano-banana-pro/edit    (hasta 14 imágenes)
 
-El `model_id` exacto de Nano Banana Pro en fal.ai, y los nombres precisos de
-los campos del payload (`image_size`, `image_urls` para referencias, etc.)
-pueden haber cambiado desde el corte de conocimiento de quien escribió esto.
-**Antes de usar en producción, confirma en https://fal.ai/models:**
+Esto importa porque es justo el mecanismo que ancla la identidad del avatar:
+sin referencias, el modelo no tiene de dónde partir y cada generación
+reinventa el rostro.
 
-  1. El `model_id` correcto (búscalo en el dashboard de fal.ai, pestaña API).
-  2. Los nombres de campo que el modelo específico espera.
-  3. El formato de la respuesta (esto asume `{"images": [{"url": ...}]}`,
-     el patrón más común en fal.ai, pero varía por modelo).
+Precio verificado: $0.15 por imagen a resolución 1K/2K, $0.30 a 4K
+(fal.ai/nano-banana-pro, noviembre 2026).
 
-Todo se configura por variable de entorno, así que si algo cambió no hay que
-tocar código — sólo `.env`.
+## Lo que puede cambiar sin avisar
+
+fal.ai no versiona sus endpoints de forma explícita. Si `probar_fal.py`
+empieza a fallar, lo primero es revisar https://fal.ai/models/fal-ai/
+nano-banana-pro/api por si el esquema de entrada cambió.
 """
 
 from __future__ import annotations
 
 import os
 import time
-import uuid
 
 from ...gateway.providers.image_provider import (
     GeneratedImage,
@@ -34,17 +34,13 @@ from ...gateway.providers.image_provider import (
     image_price,
 )
 
-DEFAULT_MODEL_ID = "fal-ai/nano-banana/pro"
+MODEL_TEXT_TO_IMAGE = "fal-ai/nano-banana-pro"
+MODEL_EDIT = "fal-ai/nano-banana-pro/edit"
 
-# Mapeo aproximado de aspect_ratio a dimensiones. fal.ai suele aceptar tanto
-# un enum de tamaño como width/height explícitos según el modelo; se manda
-# width/height por ser el formato más universal entre modelos de fal.ai.
-_ASPECT_TO_SIZE = {
-    "9:16": (1080, 1920),
-    "16:9": (1920, 1080),
-    "1:1": (1024, 1024),
-    "4:5": (1080, 1350),
-}
+# Valores válidos documentados por fal.ai. Cualquier otro se manda como
+# "auto" y que el modelo decida, en vez de fallar por un valor no soportado.
+ASPECT_RATIOS_VALIDOS = {"auto", "21:9", "16:9", "3:2", "4:3", "5:4", "1:1",
+                         "4:5", "3:4", "2:3", "9:16"}
 
 
 class FalProviderError(Exception):
@@ -54,7 +50,10 @@ class FalProviderError(Exception):
 class FalImageProvider:
     name = "fal_nano_banana_pro"
 
-    def __init__(self, api_key: str | None = None, model_id: str | None = None,
+    def __init__(self, api_key: str | None = None,
+                model_id_t2i: str | None = None,
+                model_id_edit: str | None = None,
+                resolution: str | None = None,
                 timeout_s: float = 120.0):
         self._api_key = api_key or os.getenv("FAL_KEY")
         if not self._api_key:
@@ -62,9 +61,13 @@ class FalImageProvider:
                 "Falta FAL_KEY. Se obtiene en https://fal.ai/dashboard/keys "
                 "y se configura en .env."
             )
-        self._model_id = model_id or os.getenv("FAL_MODEL_ID_IMAGE",
-                                                DEFAULT_MODEL_ID)
-        self._endpoint = f"https://fal.run/{self._model_id}"
+        self._model_t2i = model_id_t2i or os.getenv(
+            "FAL_MODEL_ID_IMAGE", MODEL_TEXT_TO_IMAGE)
+        self._model_edit = model_id_edit or os.getenv(
+            "FAL_MODEL_ID_IMAGE_EDIT", MODEL_EDIT)
+        # 1K y 2K cuestan igual ($0.15); 4K cuesta el doble. Por defecto 1K,
+        # suficiente para revisar en pantalla antes de animar con video.
+        self._resolution = resolution or os.getenv("FAL_IMAGE_RESOLUTION", "1K")
         self._timeout_s = timeout_s
 
     def generate(self, request: ImageRequest) -> ImageResponse:
@@ -75,27 +78,37 @@ class FalImageProvider:
                 "Falta la librería 'requests'. `pip install requests`."
             ) from exc
 
-        width, height = _ASPECT_TO_SIZE.get(request.aspect_ratio, (1080, 1920))
-        payload: dict = {
-            "prompt": request.prompt,
-            "image_size": {"width": width, "height": height},
-            "num_images": request.n_variants,
-        }
+        con_referencias = bool(request.reference_urls)
+        model_id = self._model_edit if con_referencias else self._model_t2i
+        endpoint = f"https://fal.run/{model_id}"
+
+        aspecto = (request.aspect_ratio if request.aspect_ratio
+                                          in ASPECT_RATIOS_VALIDOS else "auto")
+
+        prompt = request.prompt
         if request.negative_prompt:
-            payload["negative_prompt"] = request.negative_prompt
+            # Nano Banana Pro (basado en Gemini) interpreta lenguaje natural
+            # de forma holística y no tiene un campo separado de prompt
+            # negativo como los modelos de difusión clásicos — se pliega
+            # como instrucción dentro del propio prompt.
+            prompt = f"{prompt}\n\nEvita expresamente: {request.negative_prompt}."
+
+        payload: dict = {
+            "prompt": prompt,
+            "num_images": request.n_variants,
+            "aspect_ratio": aspecto,
+            "resolution": self._resolution,
+            "output_format": "png",
+        }
         if request.seed is not None:
             payload["seed"] = request.seed
-        if request.reference_urls:
-            # Nombre de campo sin confirmar contra la documentación actual
-            # del modelo — ver advertencia al inicio del archivo. Es lo que
-            # ancla la generación en las referencias del avatar en vez de
-            # redescribirlo desde cero.
+        if con_referencias:
             payload["image_urls"] = request.reference_urls
 
         started = time.perf_counter()
         try:
             resp = requests.post(
-                self._endpoint,
+                endpoint,
                 headers={"Authorization": f"Key {self._api_key}",
                         "Content-Type": "application/json"},
                 json=payload, timeout=self._timeout_s,
@@ -115,21 +128,21 @@ class FalImageProvider:
         if not crudas:
             raise FalProviderError(
                 f"fal.ai no devolvió imágenes. Respuesta cruda: {data}. "
-                f"Verifica que '{self._model_id}' sea el model_id correcto "
-                f"y que el formato de respuesta asumido siga vigente."
+                f"Verifica que '{model_id}' siga siendo un model_id válido "
+                f"en https://fal.ai/models."
             )
 
-        semilla_base = data.get("seed", request.seed or 0)
         imagenes = [
             GeneratedImage(
-                url=img["url"], provider=self.name,
-                seed=(semilla_base + i) if semilla_base is not None else None,
-                width=img.get("width", width), height=img.get("height", height),
+                url=img["url"], provider=self.name, seed=request.seed,
+                width=img.get("width") or 0, height=img.get("height") or 0,
             )
-            for i, img in enumerate(crudas)
+            for img in crudas
         ]
 
         precio_unitario = image_price(self.name).usd_per_image
+        if self._resolution == "4K":
+            precio_unitario *= 2
         return ImageResponse(
             images=imagenes, provider=self.name,
             cost_usd=round(precio_unitario * len(imagenes), 6),

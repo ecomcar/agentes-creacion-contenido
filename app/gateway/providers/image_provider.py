@@ -44,9 +44,11 @@ IMAGE_PRICES: dict[str, ImagePrice] = {
         note="SIN VERIFICAR — configurar PRICE_IMAGE_NANO_BANANA_PRO en .env.",
     ),
     "fal_nano_banana_pro": ImagePrice(
-        provider="fal_nano_banana_pro", usd_per_image=0.0, verified=False,
-        note="SIN VERIFICAR — configurar PRICE_IMAGE_FAL_NANO_BANANA_PRO en "
-             ".env con la cifra real del dashboard de fal.ai.",
+        provider="fal_nano_banana_pro", usd_per_image=0.15, verified=True,
+        note="Verificado en la documentación de fal.ai (nov. 2026): $0.15 "
+             "por imagen a 1K/2K de resolución, $0.30 a 4K. Este precio "
+             "asume 1K/2K; si se usa FAL_IMAGE_RESOLUTION=4K, duplicar a "
+             "mano con PRICE_IMAGE_FAL_NANO_BANANA_PRO=0.30.",
     ),
     "fake_image": ImagePrice(
         provider="fake_image", usd_per_image=0.0, verified=True,

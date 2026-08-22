@@ -31,7 +31,7 @@ from app.gateway.providers.fal_provider import FalImageProvider, FalProviderErro
 from app.gateway.providers.image_provider import ImageRequest
 
 print("Conectando con fal.ai...")
-print(f"Modelo: {os.getenv('FAL_MODEL_ID_IMAGE', '(por defecto) fal-ai/nano-banana/pro')}")
+print(f"Modelo: {os.getenv('FAL_MODEL_ID_IMAGE', '(por defecto) fal-ai/nano-banana-pro')}")
 
 provider = FalImageProvider()
 
