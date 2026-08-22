@@ -61,6 +61,15 @@ class FalVideoProvider:
                 "y se configura en .env."
             )
         self._model_id = model_id or os.getenv("FAL_MODEL_ID_VIDEO", MODEL_ID)
+        # fal.ai distingue el model_id completo (con subpath, usado para
+        # ENVIAR el trabajo) del namespace base (usado para CONSULTARLO).
+        # 'fal-ai/kling-video/v3/standard/image-to-video' se envía entero,
+        # pero /status y el resultado van contra 'fal-ai/kling-video' —
+        # usar el path completo ahí da 405 Method Not Allowed, no 404,
+        # porque la ruta existe pero no acepta ese verbo con ese subpath.
+        # Confirmado con una llamada real, no supuesto de antemano.
+        partes = self._model_id.split("/")
+        self._namespace = "/".join(partes[:2]) if len(partes) >= 2 else self._model_id
         self._generate_audio = generate_audio
         self._timeout_s = timeout_s
         # request_id → duración redondeada, para poder calcular el costo en
@@ -125,7 +134,7 @@ class FalVideoProvider:
 
     def poll(self, provider_job_id: str) -> VideoJobStatus:
         requests = self._requests()
-        base = f"https://queue.fal.run/{self._model_id}/requests/{provider_job_id}"
+        base = f"https://queue.fal.run/{self._namespace}/requests/{provider_job_id}"
 
         try:
             resp = requests.get(f"{base}/status", headers=self._headers(),

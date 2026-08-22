@@ -154,6 +154,31 @@ def test_submit_usa_el_endpoint_de_cola_no_el_sincrono(monkeypatch):
     assert sesion.llamadas_post[0]["url"].startswith("https://queue.fal.run/")
 
 
+def test_submit_usa_el_model_id_completo_con_subpath(monkeypatch):
+    """El envío sí necesita el path completo, incluido el subpath."""
+    p, sesion = _provider(monkeypatch)
+    sesion.respuestas_post = [RespuestaFalsa({"request_id": "req_1"})]
+    p.submit(_request())
+    assert sesion.llamadas_post[0]["url"] == f"https://queue.fal.run/{MODEL_ID}"
+
+
+def test_poll_usa_solo_el_namespace_base_no_el_subpath(monkeypatch):
+    """
+    El bug real que encontramos con una llamada de verdad: usar el model_id
+    completo para consultar el estado da 405 Method Not Allowed, no 404 —
+    la ruta existe pero no acepta ese verbo con ese subpath. fal.ai separa
+    'dónde se envía' de 'dónde se consulta': el subpath sólo aplica al
+    envío.
+    """
+    p, sesion = _provider(monkeypatch)
+    sesion.respuestas_get = [RespuestaFalsa({"status": "IN_QUEUE"})]
+    p.poll("req_1")
+    url_consultada = sesion.llamadas_get[0]["url"]
+    assert url_consultada == (
+        "https://queue.fal.run/fal-ai/kling-video/requests/req_1/status")
+    assert "v3/standard/image-to-video" not in url_consultada
+
+
 # ------------------------------------------------------------- poll
 
 
