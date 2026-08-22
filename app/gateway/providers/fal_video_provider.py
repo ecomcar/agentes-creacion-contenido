@@ -163,12 +163,31 @@ class FalVideoProvider:
                               f"Respuesta cruda: {estado}",
             )
 
-        # Terminado: pedir el resultado.
+        # Terminado según /status: pedir el resultado. Esto puede fallar por
+        # dos motivos distintos y hay que distinguirlos:
+        #   - error de red/autenticación → excepción real, algo está roto
+        #   - error de negocio (ej. la imagen de entrada no se pudo
+        #     descargar) → estado FAILED normal, el trabajo simplemente no
+        #     se pudo generar. fal.ai reporta esto con HTTP 422 y un cuerpo
+        #     explicando la causa real; no hay que tratarlo como una
+        #     excepción del proveedor, sino como el resultado legítimo de
+        #     un trabajo que falló.
         try:
             resp = requests.get(base, headers=self._headers(),
                                 timeout=self._timeout_s)
             resp.raise_for_status()
             resultado = resp.json()
+        except requests.HTTPError:
+            detalle = resp.text[:300]
+            try:
+                cuerpo = resp.json()
+                detalle = cuerpo.get("detail", detalle)
+            except ValueError:
+                pass
+            return VideoJobStatus(
+                provider_job_id=provider_job_id, state=VideoJobState.FAILED,
+                error_message=f"El trabajo falló al generar: {detalle}",
+            )
         except requests.RequestException as exc:
             raise FalVideoProviderError(
                 f"Fallo al obtener el resultado de fal.ai: {exc}"

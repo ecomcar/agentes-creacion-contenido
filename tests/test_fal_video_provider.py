@@ -229,6 +229,28 @@ def test_poll_estado_desconocido_se_marca_como_fallo(monkeypatch):
     assert "ERROR" in estado.error_message
 
 
+def test_poll_error_de_negocio_al_pedir_resultado_es_failed_no_excepcion(monkeypatch):
+    """
+    Caso real encontrado con una llamada de verdad: la imagen de entrada no
+    se pudo descargar. fal.ai lo reporta con HTTP 422 y un cuerpo
+    explicando la causa — es el resultado legítimo de un trabajo fallido,
+    no una excepción del proveedor. El sistema debe poder seguir operando
+    (marcar el clip como fallido, reintentar con otra imagen), no caerse.
+    """
+    p, sesion = _provider(monkeypatch)
+    sesion.respuestas_get = [
+        RespuestaFalsa({"status": "COMPLETED"}),
+        RespuestaFalsa(
+            {"detail": [{"loc": ["body"], "type": "file_download_error",
+                        "msg": "Failed to download the file."}]},
+            status=422),
+    ]
+    estado = p.poll("req_1")
+    assert estado.state is VideoJobState.FAILED
+    assert "file_download_error" in estado.error_message or \
+           "Failed to download" in estado.error_message
+
+
 def test_poll_completado_sin_video_en_la_respuesta_es_fallo(monkeypatch):
     p, sesion = _provider(monkeypatch)
     sesion.respuestas_get = [

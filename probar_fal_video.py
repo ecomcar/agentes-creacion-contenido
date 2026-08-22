@@ -35,11 +35,14 @@ from app.gateway.providers.fal_video_provider import (
 )
 from app.gateway.providers.video_provider import VideoJobState, VideoRequest
 
-# Imagen de ejemplo pública de la propia documentación de fal.ai — no hace
-# falta tener un avatar generado para esta verificación.
+# Imagen de ejemplo estable. La de la propia documentación de fal.ai
+# (storage.googleapis.com/falserverless/...) resultó no ser descargable por
+# sus propios servidores al probarla — confirmado con un 422
+# "file_download_error". Wikimedia Commons no restringe hotlinking y es
+# mucho más estable para este tipo de verificación.
 IMAGEN_DE_PRUEBA = (
-    "https://storage.googleapis.com/falserverless/example_inputs/"
-    "kling-image-to-video-input.jpg"
+    "https://upload.wikimedia.org/wikipedia/commons/e/ec/"
+    "Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg"
 )
 DURACION_SEC = 5.0
 COSTO_ESTIMADO = 5 * 0.084
