@@ -13,3 +13,4 @@ anthropic>=0.40
 
 # Desarrollo
 pytest>=8.0
+requests>=2.31
