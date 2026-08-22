@@ -1,0 +1,15 @@
+# Núcleo — necesario siempre
+pydantic>=2.9
+pydantic-settings>=2.5
+python-dotenv>=1.0
+
+# Persistencia
+SQLAlchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.2
+
+# Modelos — sólo para ejecutar de verdad
+anthropic>=0.40
+
+# Desarrollo
+pytest>=8.0

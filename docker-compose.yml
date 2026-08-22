@@ -1,0 +1,38 @@
+# Levantar con:  docker compose up -d
+#
+# Sólo Postgres. El backend se ejecuta en local con tu Python, que es más
+# cómodo para iterar en prompts: no hay que reconstruir imagen en cada cambio.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ugc_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ugc
+      POSTGRES_PASSWORD: ugc
+      POSTGRES_DB: ugc
+    ports:
+      - "5432:5432"
+    volumes:
+      - ugc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Sin esto, `docker compose up -d` devuelve antes de que Postgres
+      # acepte conexiones y la primera migración falla sin motivo aparente.
+      test: ["CMD-SHELL", "pg_isready -U ugc -d ugc"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    container_name: ugc_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  ugc_pgdata:

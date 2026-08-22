@@ -1,0 +1,27 @@
+# Secretos — NUNCA subir esto
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Bases de datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Entornos virtuales, por si se crea alguno
+venv/
+.venv/
+env/
+
+# Editor
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
