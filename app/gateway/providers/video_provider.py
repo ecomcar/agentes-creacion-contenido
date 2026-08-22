@@ -45,6 +45,12 @@ VIDEO_PRICES: dict[str, VideoPrice] = {
                         note="SIN VERIFICAR — configurar PRICE_VIDEO_KLING."),
     "kling_3": VideoPrice(provider="kling_3", usd_per_second=0.0, verified=False,
                           note="SIN VERIFICAR — configurar PRICE_VIDEO_KLING_3."),
+    "fal_kling_v3_standard": VideoPrice(
+        provider="fal_kling_v3_standard", usd_per_second=0.084, verified=True,
+        note="Verificado en fal.ai (nov. 2026): Kling v3 Standard "
+             "image-to-video, audio desactivado. Con generate_audio=true "
+             "sube a $0.126/s.",
+    ),
     "fake_video": VideoPrice(provider="fake_video", usd_per_second=0.0,
                              verified=True,
                              note="Proveedor de pruebas: no genera nada."),

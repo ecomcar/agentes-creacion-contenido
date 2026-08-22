@@ -94,3 +94,9 @@ from .voice_provider import (  # noqa: E402
     unverified_voice_providers,
     voice_price,
 )
+
+from .fal_provider import FalImageProvider, FalProviderError  # noqa: E402
+from .fal_video_provider import (  # noqa: E402
+    FalVideoProvider,
+    FalVideoProviderError,
+)
