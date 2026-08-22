@@ -43,6 +43,11 @@ IMAGE_PRICES: dict[str, ImagePrice] = {
         provider="nano_banana_pro", usd_per_image=0.0, verified=False,
         note="SIN VERIFICAR — configurar PRICE_IMAGE_NANO_BANANA_PRO en .env.",
     ),
+    "fal_nano_banana_pro": ImagePrice(
+        provider="fal_nano_banana_pro", usd_per_image=0.0, verified=False,
+        note="SIN VERIFICAR — configurar PRICE_IMAGE_FAL_NANO_BANANA_PRO en "
+             ".env con la cifra real del dashboard de fal.ai.",
+    ),
     "fake_image": ImagePrice(
         provider="fake_image", usd_per_image=0.0, verified=True,
         note="Proveedor de pruebas: no cuesta nada porque no genera nada.",
