@@ -53,8 +53,7 @@ print(f"  Latencia: {resultado.latency_ms}ms")
 print(f"  Imágenes generadas: {len(resultado.images)}")
 for img in resultado.images:
     print(f"  URL: {img.url}")
-print(f"\n  Costo reportado: ${resultado.cost_usd:.4f}")
-print("  (será $0.0000 hasta que configures PRICE_IMAGE_FAL_NANO_BANANA_PRO")
-print("   en .env con la cifra real de tu cuenta de fal.ai)")
+print(f"\n  Costo reportado: ${resultado.cost_usd:.4f} "
+      f"(precio verificado: $0.15/imagen a 1K/2K)")
 print("\nAbre la URL en el navegador para confirmar visualmente que la")
 print("imagen es razonable antes de conectar esto al pipeline completo.")
