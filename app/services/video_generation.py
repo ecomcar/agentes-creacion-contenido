@@ -125,6 +125,7 @@ class VideoGenerationService:
             version=self._next_version(job.project_code, job.clip_id),
             storage_url=job.result_url, source_prompt_id=job.id,
             provider=job.provider, cost_usd=job.cost_usd,
+            duration_sec=job.duration_sec,
         )
         self.assets.append(asset)
         return asset

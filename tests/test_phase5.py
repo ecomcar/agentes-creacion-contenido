@@ -333,6 +333,18 @@ def test_recoger_produce_un_asset_de_video():
                      image_asset=_image_asset())
     asset = svc.wait_and_collect(job)
     assert asset is not None and asset.kind == "video"
+
+
+def test_el_asset_de_video_guarda_la_duracion_real():
+    """
+    Bug encontrado al construir el servicio de audio: el dato ya estaba
+    disponible en el Job (job.duration_sec) pero nunca se pasaba al Asset.
+    """
+    svc, _, _ = _svc(polls=1)
+    job = svc.submit(_prompt(), project_code="UGC-0001",
+                     image_asset=_image_asset())
+    asset = svc.wait_and_collect(job)
+    assert asset.duration_sec == job.duration_sec > 0
     assert asset.clip_id == "C01"
 
 

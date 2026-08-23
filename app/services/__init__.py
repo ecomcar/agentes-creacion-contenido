@@ -24,6 +24,7 @@ from .diagnostics import (
     diagnose_strategy,
 )
 from .creative_memory import DEFAULT_TTL_DAYS, CreativeMemory, MemoryEntry
+from .audio_generation import AudioBlocked, AudioGenerationService
 from .video_generation import ClipProgress, VideoBlocked, VideoGenerationService
 from .voice_library import (
     TODAS_LAS_VOCES,
@@ -42,6 +43,7 @@ __all__ = [
     "Asset", "AvatarLibrary", "GenerationBlocked", "ImageGenerationService",
     "Job", "JobQueue", "JobStatus", "idempotency_key", "MAX_POLLS_PER_JOB",
     "VideoGenerationService", "VideoBlocked", "ClipProgress",
+    "AudioGenerationService", "AudioBlocked",
     "TODAS_LAS_VOCES", "VOCES_FEMENINAS", "VOCES_MASCULINAS", "CuratedVoice",
     "VoiceGender", "find_duplicate_ids", "get_by_id", "get_by_name",
     "list_by_gender", "usable_voices",

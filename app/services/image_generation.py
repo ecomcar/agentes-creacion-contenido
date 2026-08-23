@@ -45,6 +45,10 @@ class Asset(BaseModel):
     is_selected: bool = False
     cost_usd: float = 0.0
     seed: int | None = None
+    # Falta en assets de imagen (no aplica), presente en video y audio.
+    # Ya existía en la tabla `assets` de la base de datos (Fase de
+    # persistencia); el modelo Pydantic se había quedado atrás.
+    duration_sec: float | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
