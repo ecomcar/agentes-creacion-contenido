@@ -404,6 +404,26 @@ def test_prompt_imagen_sin_anclaje_de_identidad_bloquea():
     assert "identity_not_anchored" in {i.code for i in p.blocking_issues()}
 
 
+def test_character_creation_no_exige_anclaje():
+    """
+    La escena que crea la PRIMERA imagen de un avatar nuevo no tiene
+    referencia previa a la que anclarse — por definición. Sin esta
+    excepción, el Agente 7 no podría crear un avatar nuevo nunca.
+    """
+    p = ImagePrompt(
+        artifact=ArtifactType.IMAGE_PROMPT, created_by="agent_07",
+        avatar_id="AV-FEMALE-EC-001", template_code="NB_CHARACTER_CREATION",
+        template_version=1, scene=SceneTemplate.CHARACTER_CREATION,
+        prompt_text="Vertical smartphone photo of a Latin American woman, "
+                    "front-facing, natural window light",
+        identity_reference_used=False,
+        imperfections_included=["visible skin texture", "flyaway hair strand"],
+        negative_constraints=["studio lighting"],
+    )
+    assert "identity_not_anchored" not in {i.code for i in p.blocking_issues()}
+    assert p.can_be_approved()
+
+
 def test_prompt_imagen_con_lenguaje_de_comercial_bloquea():
     p = _image_prompt(text="Beautiful woman with perfect skin, cinematic "
                            "lighting, professional model, 8k masterpiece")

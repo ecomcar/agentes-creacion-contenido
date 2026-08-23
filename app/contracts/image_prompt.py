@@ -55,7 +55,12 @@ class ImagePrompt(ArtifactBase):
 
         # La regla que sostiene toda la consistencia de rostro: el prompt
         # ancla en la referencia del avatar, no vuelve a describirlo.
-        if not self.identity_reference_used:
+        #
+        # Excepción: la escena 'character_creation' es la que genera la
+        # PRIMERA imagen de un avatar nuevo — por definición no hay
+        # referencia previa a la que anclarse todavía. Bloquearla aquí
+        # dejaría al Agente 7 sin forma de crear un avatar nuevo nunca.
+        if not self.identity_reference_used and self.scene != SceneTemplate.CHARACTER_CREATION:
             issues.append(ApprovalIssue(
                 code="identity_not_anchored",
                 message="El prompt describe al personaje desde cero en vez de "
