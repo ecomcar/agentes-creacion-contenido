@@ -60,7 +60,7 @@ def imagen(clip_id="C01", selected=True) -> Asset:
 # ══ 1 · El envío vuelve enseguida ═══════════════════════════════════════
 print(f"{LINE}\n1 · Enviar no es esperar\n{LINE}")
 provider = FakeVideoProvider(polls_until_done=4)
-queue = JobQueue(provider=provider)
+queue = JobQueue(provider=provider, poll_interval_s=0)  # demo con proveedor falso
 svc = VideoGenerationService(queue=queue, max_cost_per_clip_usd=1.00)
 
 job = svc.submit(VideoPrompt.model_validate(PROMPT), project_code="UGC-0001",
@@ -86,7 +86,7 @@ print(f"  Coste: ${asset.cost_usd:.4f}  ({PROMPT['duration_sec']}s × "
 # ══ 2 · Idempotencia ════════════════════════════════════════════════════
 print(f"\n{LINE}\n2 · Dos clics en 'generar' no son dos generaciones\n{LINE}")
 provider = FakeVideoProvider(polls_until_done=1)
-queue = JobQueue(provider=provider)
+queue = JobQueue(provider=provider, poll_interval_s=0)  # demo con proveedor falso
 r = VideoRequest(prompt="p", image_url="https://fake/i.png", duration_sec=6.0,
                  seed=1)
 j1 = queue.submit(project_code="UGC-0001", clip_id="C01", request=r)
@@ -107,7 +107,7 @@ print("  por eso la semilla entra en la clave de idempotencia.")
 # ══ 3 · Trabajos huérfanos ══════════════════════════════════════════════
 print(f"\n{LINE}\n3 · Si el proceso muere, el proveedor sigue cobrando\n{LINE}")
 provider = FakeVideoProvider(polls_until_done=1)
-queue = JobQueue(provider=provider)
+queue = JobQueue(provider=provider, poll_interval_s=0)  # demo con proveedor falso
 for clip in ("C01", "C02", "C03"):
     queue.submit(project_code="UGC-0001", clip_id=clip,
                  request=VideoRequest(prompt=f"p{clip}",
@@ -126,7 +126,7 @@ print("  El id del proveedor se guarda ANTES de nada más, justo para esto.")
 # ══ 4 · Compuertas y topes ══════════════════════════════════════════════
 print(f"\n{LINE}\n4 · Lo que no llega a encolarse\n{LINE}")
 provider = FakeVideoProvider(polls_until_done=1)
-svc = VideoGenerationService(queue=JobQueue(provider=provider),
+svc = VideoGenerationService(queue=JobQueue(provider=provider, poll_interval_s=0),
                              max_cost_per_clip_usd=0.50)
 
 for etiqueta, accion in [

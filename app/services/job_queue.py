@@ -24,6 +24,7 @@ tabla que hay que añadir al migrar esta fase a Postgres.
 from __future__ import annotations
 
 import hashlib
+import time
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -107,11 +108,19 @@ class JobQueue:
     """Cola en memoria. En producción, las mismas operaciones sobre `jobs`."""
 
     def __init__(self, provider: VideoProvider,
-                 max_polls: int = MAX_POLLS_PER_JOB):
+                 max_polls: int = MAX_POLLS_PER_JOB,
+                 poll_interval_s: float = 8.0):
         self.provider = provider
         self.max_polls = max_polls
+        # 8s es el intervalo que ya se probó funcionando de verdad
+        # contra Kling (ver probar_fal_video.py). Los tests con
+        # FakeVideoProvider deben pasar poll_interval_s=0
+        # explícitamente para no volverse lentos — este valor por
+        # defecto es para uso real, no para tests.
+        self.poll_interval_s = poll_interval_s
         self.jobs: dict[str, Job] = {}
         self._by_key: dict[str, str] = {}
+
 
     # -- envío --------------------------------------------------------
 
@@ -190,19 +199,31 @@ class JobQueue:
 
         return job
 
-    def wait(self, job_id: str, max_polls: int | None = None) -> Job:
+    def wait(self, job_id: str, max_polls: int | None = None,
+             poll_interval_s: float | None = None) -> Job:
         """
-        Sondea hasta terminar. Útil en scripts y tests.
+        Sondea hasta terminar, con una espera real entre cada consulta.
 
-        En la API HTTP no se usa: allí se devuelve el `job_id` al instante y
-        el frontend consulta el estado.
+        Bug real encontrado con una llamada de verdad: sin la espera,
+        este método agotaba los 120 intentos en segundos —limitado sólo
+        por la latencia de red— y abandonaba el trabajo mucho antes de
+        que Kling terminara de generar (1-3 minutos reales). No es que
+        el proveedor tardara 16 minutos; es que nunca se esperó nada.
+
+        En la API HTTP no se usa: allí se devuelve el `job_id` al instante
+        y el frontend consulta el estado.
         """
         limite = max_polls if max_polls is not None else self.max_polls
-        for _ in range(limite):
+        intervalo = (poll_interval_s if poll_interval_s is not None
+                    else self.poll_interval_s)
+        for intento in range(limite):
             job = self.poll(job_id)
             if job.terminal:
                 return job
+            if intento < limite - 1 and intervalo > 0:
+                time.sleep(intervalo)
         return self.jobs[job_id]
+
 
     # -- recuperación -------------------------------------------------
 

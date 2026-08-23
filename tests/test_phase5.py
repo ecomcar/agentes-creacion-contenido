@@ -88,7 +88,9 @@ def _prompt(data=None) -> VideoPrompt:
 
 def _svc(polls=2, **kw):
     provider = FakeVideoProvider(polls_until_done=polls)
-    queue = JobQueue(provider=provider)
+    # poll_interval_s=0: las pruebas no deben esperar de verdad, sólo
+    # FakeVideoProvider simula la latencia contando sondeos.
+    queue = JobQueue(provider=provider, poll_interval_s=0)
     return VideoGenerationService(queue=queue, **kw), queue, provider
 
 
@@ -197,7 +199,7 @@ def test_enviar_dos_veces_lo_mismo_no_cobra_dos_veces():
 
 def test_un_trabajo_fallido_si_puede_reintentarse():
     provider = FakeVideoProvider(fail_submit=True)
-    queue = JobQueue(provider=provider)
+    queue = JobQueue(provider=provider, poll_interval_s=0)
     j1 = queue.submit(project_code="UGC-0001", clip_id="C01", request=_request())
     assert j1.status is JobStatus.FAILED
 
@@ -233,7 +235,8 @@ def test_el_trabajo_termina_con_url():
 
 
 def test_un_fallo_del_proveedor_termina_el_trabajo():
-    queue = JobQueue(provider=FakeVideoProvider(polls_until_done=1, fail_job=True))
+    queue = JobQueue(provider=FakeVideoProvider(polls_until_done=1, fail_job=True),
+                     poll_interval_s=0)
     job = queue.submit(project_code="UGC-0001", clip_id="C01", request=_request())
     terminado = queue.wait(job.id)
     assert terminado.status is JobStatus.FAILED
@@ -243,7 +246,7 @@ def test_un_fallo_del_proveedor_termina_el_trabajo():
 def test_el_sondeo_infinito_tiene_tope():
     """Un trabajo que nunca termina no puede consumir sondeos para siempre."""
     queue = JobQueue(provider=FakeVideoProvider(polls_until_done=9999),
-                     max_polls=5)
+                     max_polls=5, poll_interval_s=0)
     job = queue.submit(project_code="UGC-0001", clip_id="C01", request=_request())
     terminado = queue.wait(job.id, max_polls=20)
     assert terminado.status is JobStatus.ABANDONED
