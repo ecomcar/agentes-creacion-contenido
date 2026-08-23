@@ -34,6 +34,14 @@ VOICE_PRICES: dict[str, VoicePrice] = {
     "elevenlabs": VoicePrice(provider="elevenlabs", usd_per_1k_chars=0.0,
                              verified=False,
                              note="SIN VERIFICAR — configurar PRICE_VOICE_ELEVENLABS."),
+    "fal_elevenlabs_multilingual_v2": VoicePrice(
+        provider="fal_elevenlabs_multilingual_v2", usd_per_1k_chars=0.10,
+        verified=True,
+        note="Verificado en fal.ai (nov. 2026): ElevenLabs Multilingual v2, "
+             "29 idiomas, prioriza estabilidad sobre velocidad. La "
+             "alternativa Turbo v2.5 cuesta $0.05/1k pero con menos "
+             "idiomas y más énfasis en baja latencia que en naturalidad.",
+    ),
     "fake_voice": VoicePrice(provider="fake_voice", usd_per_1k_chars=0.0,
                              verified=True,
                              note="Proveedor de pruebas: no sintetiza nada."),

@@ -100,3 +100,4 @@ from .fal_video_provider import (  # noqa: E402
     FalVideoProvider,
     FalVideoProviderError,
 )
+from .fal_voice_provider import FalVoiceProvider, FalVoiceProviderError  # noqa: E402
