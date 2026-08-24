@@ -14,3 +14,9 @@ anthropic>=0.40
 # Desarrollo
 pytest>=8.0
 requests>=2.31
+
+# API HTTP
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+httpx2>=0.1

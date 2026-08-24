@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema UGC — Panel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Sistema UGC — Panel de control</h1>
+  <span class="estado" id="estado-conexion">conectando…</span>
+</header>
+
+<main>
+  <nav class="proyectos">
+    <h2>Proyectos</h2>
+    <ul class="lista-proyectos" id="lista-proyectos"></ul>
+
+    <details>
+      <summary style="cursor:pointer; font-size:13px; color:var(--text-dim);">
+        + Nuevo proyecto
+      </summary>
+      <form id="form-nuevo-proyecto" style="margin-top:10px;">
+        <label>Código (ej. UGC-0001)</label>
+        <input name="code" required pattern="[A-Za-z0-9\-]+">
+        <label>Marca</label>
+        <input name="brand_name" required>
+        <label>Producto</label>
+        <input name="product_name" required>
+        <button type="submit" style="margin-top:12px; width:100%;">Crear</button>
+      </form>
+    </details>
+  </nav>
+
+  <div class="contenido" id="contenido">
+    <div class="vacio">Elige un proyecto de la izquierda, o crea uno nuevo.</div>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
