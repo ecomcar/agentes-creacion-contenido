@@ -157,7 +157,7 @@ class Clip(Base, TimestampMixin):
     current_audit_score: Mapped[int | None] = mapped_column(Integer)
 
     project: Mapped[Project] = relationship(back_populates="clips")
-    assets: Mapped[list[Asset]] = relationship(
+    assets: Mapped[list["AssetRow"]] = relationship(
         back_populates="clip", cascade="all, delete-orphan")
 
     __table_args__ = (UniqueConstraint("project_id", "code",
@@ -167,7 +167,14 @@ class Clip(Base, TimestampMixin):
 # -------------------------------------------------------------- assets
 
 
-class Asset(Base, TimestampMixin):
+class AssetRow(Base, TimestampMixin):
+    """
+    Sufijo "Row" por el mismo motivo que JobRow: existe un `Asset`
+    Pydantic en app.services (el que ya usan los tres servicios de
+    generación) y una importación sin alias de ambos se pisaría en
+    silencio.
+    """
+
     __tablename__ = "assets"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)

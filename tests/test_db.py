@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from app.contracts import ArtifactStatus, ArtifactType, ResearchBrief, Strategy
 from app.db import (
     ArtifactRepository,
-    Asset,
+    AssetRow,
     Clip,
     ClipAudit,
     JobRepository,
@@ -224,10 +224,10 @@ def test_solo_un_asset_seleccionado_por_clip(session, project):
     session.add(clip)
     session.flush()
 
-    session.add(Asset(project_id=project.id, clip_id=clip.id, kind="image",
+    session.add(AssetRow(project_id=project.id, clip_id=clip.id, kind="image",
                       version=1, storage_url="a.png", is_selected=True))
     session.flush()
-    session.add(Asset(project_id=project.id, clip_id=clip.id, kind="image",
+    session.add(AssetRow(project_id=project.id, clip_id=clip.id, kind="image",
                       version=2, storage_url="b.png", is_selected=True))
     with pytest.raises(IntegrityError):
         session.flush()
@@ -238,7 +238,7 @@ def test_varias_variantes_sin_seleccionar_conviven(session, project):
     session.add(clip)
     session.flush()
     for v in range(1, 4):
-        session.add(Asset(project_id=project.id, clip_id=clip.id, kind="image",
+        session.add(AssetRow(project_id=project.id, clip_id=clip.id, kind="image",
                           version=v, storage_url=f"{v}.png"))
     session.flush()      # ninguna seleccionada: permitido
 
@@ -248,9 +248,9 @@ def test_imagen_y_video_pueden_estar_ambos_seleccionados(session, project):
     clip = Clip(project_id=project.id, code="C01", sequence_order=1)
     session.add(clip)
     session.flush()
-    session.add(Asset(project_id=project.id, clip_id=clip.id, kind="image",
+    session.add(AssetRow(project_id=project.id, clip_id=clip.id, kind="image",
                       version=1, storage_url="a.png", is_selected=True))
-    session.add(Asset(project_id=project.id, clip_id=clip.id, kind="video",
+    session.add(AssetRow(project_id=project.id, clip_id=clip.id, kind="video",
                       version=1, storage_url="a.mp4", is_selected=True))
     session.flush()
 
