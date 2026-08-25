@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .artifacts import ArtifactRepository, ProjectRepository
 from .assets import AssetRepository
+from .brands import BrandRepository
 from .clip_audits import ClipAuditRepository
 from .clips import ClipRepository
 from .runs import JobRepository, RunRepository
@@ -11,5 +12,5 @@ from .runs import JobRepository, RunRepository
 __all__ = [
     "ArtifactRepository", "ProjectRepository", "RunRepository",
     "JobRepository", "AssetRepository", "ClipRepository",
-    "ClipAuditRepository",
+    "ClipAuditRepository", "BrandRepository",
 ]

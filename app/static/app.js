@@ -31,10 +31,40 @@ async function iniciar() {
     document.getElementById("estado-conexion").textContent = "sin conexión con el servidor";
   }
   await cargarListaProyectos();
+  await cargarSelectorMarcas();
+  await cargarListaMarcas();
 
+  // -- pestañas Proyectos / Marcas --
+  document.querySelectorAll(".pestana-nav").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".pestana-nav").forEach(b => b.classList.remove("activa"));
+      btn.classList.add("activa");
+      const esProyectos = btn.dataset.vista === "proyectos";
+      document.getElementById("vista-proyectos").style.display = esProyectos ? "" : "none";
+      document.getElementById("vista-marcas").style.display = esProyectos ? "none" : "";
+    });
+  });
+
+  // -- selector de marca en el formulario de proyecto --
+  const selectMarca = document.getElementById("select-marca-proyecto");
+  const campoTexto = document.getElementById("campo-marca-texto");
+  selectMarca.addEventListener("change", () => {
+    if (selectMarca.value) {
+      campoTexto.style.display = "none";
+      campoTexto.querySelector("input").required = false;
+      campoTexto.querySelector("input").value =
+        selectMarca.options[selectMarca.selectedIndex].dataset.nombre;
+    } else {
+      campoTexto.style.display = "";
+      campoTexto.querySelector("input").required = true;
+    }
+  });
+
+  // -- crear proyecto --
   document.getElementById("form-nuevo-proyecto").addEventListener("submit", async (e) => {
     e.preventDefault();
     const datos = Object.fromEntries(new FormData(e.target));
+    if (!datos.brand_id) delete datos.brand_id;   // "" no es un id válido
     try {
       const proyecto = await api("/projects", {
         method: "POST", body: JSON.stringify(datos),
@@ -46,6 +76,126 @@ async function iniciar() {
       alert("No se pudo crear el proyecto: " + err.message);
     }
   });
+
+  // -- crear marca --
+  document.getElementById("form-nueva-marca").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const cruda = Object.fromEntries(new FormData(e.target));
+    const datos = {
+      name: cruda.name,
+      brand_voice: cruda.brand_voice || null,
+      default_audience: {
+        ...(cruda.age_range ? { age_range: cruda.age_range } : {}),
+        ...(cruda.location ? { location: cruda.location } : {}),
+      },
+      forbidden_claims: cruda.forbidden_claims
+        ? cruda.forbidden_claims.split(",").map(s => s.trim()).filter(Boolean)
+        : [],
+    };
+    try {
+      await api("/brands", { method: "POST", body: JSON.stringify(datos) });
+      e.target.reset();
+      await cargarSelectorMarcas();
+      await cargarListaMarcas();
+    } catch (err) {
+      alert("No se pudo crear la marca: " + err.message);
+    }
+  });
+}
+
+// ------------------------------------------------------------------ marcas
+
+async function cargarSelectorMarcas() {
+  const marcas = await api("/brands");
+  const select = document.getElementById("select-marca-proyecto");
+  select.innerHTML = `<option value="">— sin marca / texto libre —</option>` +
+    marcas.map(m => `<option value="${m.id}" data-nombre="${m.name}">${m.name}</option>`).join("");
+}
+
+async function cargarListaMarcas() {
+  const marcas = await api("/brands");
+  const ul = document.getElementById("lista-marcas");
+  if (marcas.length === 0) {
+    ul.innerHTML = `<li class="vacio" style="cursor:default;">Ninguna todavía.</li>`;
+    return;
+  }
+  ul.innerHTML = marcas.map(m => `
+    <li data-id="${m.id}">
+      <div class="code">${m.name}</div>
+      <div class="marca">${m.brand_voice ? m.brand_voice.slice(0, 40) : "sin voz de marca definida"}</div>
+    </li>`).join("");
+  ul.querySelectorAll("li").forEach(li => li.addEventListener("click",
+    () => mostrarDetalleMarca(li.dataset.id)));
+}
+
+async function mostrarDetalleMarca(brandId) {
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="vacio">Cargando…</div>`;
+
+  const [marca, campanas] = await Promise.all([
+    api(`/brands/${brandId}`), api(`/brands/${brandId}/projects`),
+  ]);
+
+  contenido.innerHTML = `
+    <div class="zona tarjeta-marca">
+      <h2>${marca.name}</h2>
+      <div class="campo">
+        <b>Voz de marca</b>
+        <textarea id="edit-brand-voice" data-editable>${marca.brand_voice || ""}</textarea>
+      </div>
+      <div class="campo">
+        <b>Audiencia — edad</b>
+        <input id="edit-age-range" value="${marca.default_audience.age_range || ""}">
+      </div>
+      <div class="campo">
+        <b>Audiencia — ubicación</b>
+        <input id="edit-location" value="${marca.default_audience.location || ""}">
+      </div>
+      <div class="campo">
+        <b>Reclamos prohibidos</b>
+        <input id="edit-forbidden" value="${(marca.forbidden_claims || []).join(", ")}">
+      </div>
+      <button id="btn-guardar-marca">Guardar cambios</button>
+    </div>
+
+    <div class="zona">
+      <h2>Historial de campañas (${campanas.length})</h2>
+      ${campanas.length === 0
+        ? `<div class="vacio">Todavía ninguna campaña para esta marca.</div>`
+        : campanas.map(p => `
+            <div class="historial-campana" data-code="${p.code}">
+              <span>${p.code} — ${p.product_name}</span>
+              <span class="badge ${p.stage_status}">${p.current_stage}</span>
+            </div>`).join("")}
+    </div>
+  `;
+
+  document.getElementById("btn-guardar-marca").addEventListener("click", async () => {
+    try {
+      await api(`/brands/${brandId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          brand_voice: document.getElementById("edit-brand-voice").value || null,
+          default_audience: {
+            age_range: document.getElementById("edit-age-range").value || undefined,
+            location: document.getElementById("edit-location").value || undefined,
+          },
+          forbidden_claims: document.getElementById("edit-forbidden").value
+            .split(",").map(s => s.trim()).filter(Boolean),
+        }),
+      });
+      await cargarListaMarcas();
+      mostrarDetalleMarca(brandId);
+    } catch (err) {
+      alert("No se pudo guardar: " + err.message);
+    }
+  });
+
+  contenido.querySelectorAll(".historial-campana").forEach(el =>
+    el.addEventListener("click", () => {
+      document.querySelector('.pestana-nav[data-vista="proyectos"]').click();
+      seleccionarProyecto(el.dataset.code);
+    }));
 }
 
 // --------------------------------------------------------- lista lateral

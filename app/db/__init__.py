@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .models import (
     AgentRun,
+    Brand,
     Approval,
     Artifact,
     AssetRow,
@@ -21,6 +22,7 @@ from .models import (
 )
 from .repositories import (
     ArtifactRepository,
+    BrandRepository,
     AssetRepository,
     ClipAuditRepository,
     ClipRepository,
@@ -38,9 +40,11 @@ from .session import (
 
 __all__ = [
     "Base", "Project", "Artifact", "Clip", "AssetRow", "AgentRun", "JobRow",
+    "Brand",
     "Approval", "ClipAudit", "AvatarLibraryRow", "AvatarReference",
     "PromptLibraryRow", "PromptVersion", "CampaignMetric", "CreativeMemoryRow",
     "engine_for", "session_factory", "create_all", "drop_all", "session_scope",
     "ArtifactRepository", "ProjectRepository", "RunRepository", "JobRepository",
+    "BrandRepository",
     "AssetRepository", "ClipRepository", "ClipAuditRepository",
 ]

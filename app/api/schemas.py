@@ -20,6 +20,7 @@ class ProjectCreate(BaseModel):
     code: str = Field(min_length=1, max_length=32)
     brand_name: str
     product_name: str
+    brand_id: str | None = None
     campaign_goal: str | None = None
     platform: str | None = None
     target_duration_sec: int = 35
@@ -31,12 +32,49 @@ class ProjectOut(BaseModel):
 
     id: str
     code: str
+    brand_id: str | None
     brand_name: str
     product_name: str
     current_stage: str
     stage_status: str
     auto_mode: bool
     total_cost_usd: float
+    created_at: datetime
+
+
+class BrandCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    default_audience: dict = Field(default_factory=dict)
+    brand_voice: str | None = None
+    forbidden_claims: list[str] = Field(default_factory=list)
+    competitors: list[dict] = Field(default_factory=list)
+    notes: str | None = None
+
+
+class BrandUpdate(BaseModel):
+    """Todos opcionales a propósito: es una actualización parcial."""
+    model_config = ConfigDict(extra="forbid")
+
+    default_audience: dict | None = None
+    brand_voice: str | None = None
+    forbidden_claims: list[str] | None = None
+    competitors: list[dict] | None = None
+    notes: str | None = None
+
+
+class BrandOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    default_audience: dict
+    brand_voice: str | None
+    forbidden_claims: list
+    competitors: list
+    notes: str | None
+    is_active: bool
     created_at: datetime
 
 

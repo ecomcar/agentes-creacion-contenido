@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from ..gateway.types import BudgetExceeded, GatewayError, RepairFailed
-from .routers import artifacts, assets, projects, stages
+from .routers import artifacts, assets, brands, projects, stages
 
 app = FastAPI(
     title="Sistema UGC — API",
@@ -28,6 +28,7 @@ app = FastAPI(
 )
 
 app.include_router(projects.router)
+app.include_router(brands.router)
 app.include_router(artifacts.router)
 app.include_router(assets.router)
 app.include_router(stages.router)

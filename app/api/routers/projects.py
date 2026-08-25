@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ...db import ClipRepository, ProjectRepository
+from ...db import BrandRepository, ClipRepository, ProjectRepository
 from ..deps import get_session
 from ..schemas import ClipCreate, ClipOut, ProjectCreate, ProjectOut
 
@@ -17,6 +17,12 @@ def create_project(body: ProjectCreate, session: Session = Depends(get_session))
     repo = ProjectRepository(session)
     if repo.by_code(body.code) is not None:
         raise HTTPException(409, f"Ya existe un proyecto con code '{body.code}'.")
+    if body.brand_id is not None:
+        # Validado aquí, antes de tocar la base: sin esto, un brand_id
+        # inválido rompería la restricción de llave foránea y saldría como
+        # un 500 opaco en vez de un mensaje claro.
+        if BrandRepository(session).by_id(body.brand_id) is None:
+            raise HTTPException(422, f"No existe la marca '{body.brand_id}'.")
     proyecto = repo.create(**body.model_dump())
     return proyecto
 

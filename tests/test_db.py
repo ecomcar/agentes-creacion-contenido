@@ -80,7 +80,8 @@ def test_el_esquema_tiene_las_catorce_tablas():
     create_all(engine)
     tablas = set(inspect(engine).get_table_names())
     assert "jobs" in tablas          # la que apareció en la fase 5
-    assert len(tablas) == 14
+    assert "brands" in tablas        # la que apareció al agregar marcas
+    assert len(tablas) == 15
 
 
 def test_el_codigo_de_proyecto_es_unico(session, project):

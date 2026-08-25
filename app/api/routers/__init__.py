@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from . import artifacts, assets, projects, stages
+from . import artifacts, assets, brands, projects, stages
 
-__all__ = ["projects", "artifacts", "assets", "stages"]
+__all__ = ["projects", "artifacts", "assets", "stages", "brands"]

@@ -15,23 +15,60 @@
 
 <main>
   <nav class="proyectos">
-    <h2>Proyectos</h2>
-    <ul class="lista-proyectos" id="lista-proyectos"></ul>
+    <div class="pestanas-nav">
+      <button class="pestana-nav activa" data-vista="proyectos">Proyectos</button>
+      <button class="pestana-nav" data-vista="marcas">Marcas</button>
+    </div>
 
-    <details>
-      <summary style="cursor:pointer; font-size:13px; color:var(--text-dim);">
-        + Nuevo proyecto
-      </summary>
-      <form id="form-nuevo-proyecto" style="margin-top:10px;">
-        <label>Código (ej. UGC-0001)</label>
-        <input name="code" required pattern="[A-Za-z0-9\-]+">
-        <label>Marca</label>
-        <input name="brand_name" required>
-        <label>Producto</label>
-        <input name="product_name" required>
-        <button type="submit" style="margin-top:12px; width:100%;">Crear</button>
-      </form>
-    </details>
+    <div id="vista-proyectos">
+      <h2>Proyectos</h2>
+      <ul class="lista-proyectos" id="lista-proyectos"></ul>
+
+      <details>
+        <summary style="cursor:pointer; font-size:13px; color:var(--text-dim);">
+          + Nuevo proyecto
+        </summary>
+        <form id="form-nuevo-proyecto" style="margin-top:10px;">
+          <label>Código (ej. UGC-0001)</label>
+          <input name="code" required pattern="[A-Za-z0-9\-]+">
+          <label>Marca</label>
+          <select id="select-marca-proyecto" name="brand_id">
+            <option value="">— sin marca / texto libre —</option>
+          </select>
+          <div id="campo-marca-texto">
+            <label>Nombre de marca</label>
+            <input name="brand_name" required>
+          </div>
+          <label>Producto</label>
+          <input name="product_name" required>
+          <button type="submit" style="margin-top:12px; width:100%;">Crear</button>
+        </form>
+      </details>
+    </div>
+
+    <div id="vista-marcas" style="display:none;">
+      <h2>Marcas</h2>
+      <ul class="lista-proyectos" id="lista-marcas"></ul>
+
+      <details>
+        <summary style="cursor:pointer; font-size:13px; color:var(--text-dim);">
+          + Nueva marca
+        </summary>
+        <form id="form-nueva-marca" style="margin-top:10px;">
+          <label>Nombre</label>
+          <input name="name" required>
+          <label>Voz de marca</label>
+          <textarea name="brand_voice" rows="2"></textarea>
+          <label>Audiencia — edad</label>
+          <input name="age_range" placeholder="ej. 20-45">
+          <label>Audiencia — ubicación</label>
+          <input name="location" placeholder="ej. Guayaquil">
+          <label>Reclamos prohibidos (separados por coma)</label>
+          <input name="forbidden_claims" placeholder="cura, elimina arrugas al instante">
+          <button type="submit" style="margin-top:12px; width:100%;">Crear marca</button>
+        </form>
+      </details>
+    </div>
   </nav>
 
   <div class="contenido" id="contenido">

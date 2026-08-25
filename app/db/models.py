@@ -65,11 +65,49 @@ class TimestampMixin:
 # ---------------------------------------------------------- proyectos
 
 
+class Brand(Base, TimestampMixin):
+    """
+    Marca/empresa cliente, con su brief persistente.
+
+    Existe para separar "quién es el cliente" de "qué campaña se está
+    corriendo": Karol puede tener varias campañas (distintos productos,
+    distintos ángulos) y todas comparten la misma audiencia conocida, voz
+    de marca y reclamos prohibidos — no tiene sentido volver a escribir eso
+    cada vez. `CreativeMemory.scope_value` ya anticipaba este concepto
+    (memoria por marca) pero nunca se conectó a una entidad real; ésta lo
+    es.
+    """
+
+    __tablename__ = "brands"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    # Mismo shape que AudienceSignals del contrato ResearchBrief, pero a
+    # nivel de marca: edad, ubicación, dolores conocidos — reutilizable
+    # como punto de partida en cada campaña nueva.
+    default_audience: Mapped[dict] = mapped_column(JSONType, default=dict)
+    brand_voice: Mapped[str | None] = mapped_column(Text)
+    forbidden_claims: Mapped[list] = mapped_column(JSONType, default=list)
+    # Lista de {"name":..., "angle_observed":..., "url":...} — mismo shape
+    # que Competitor del contrato, para poder precargar sin transformar.
+    competitors: Mapped[list] = mapped_column(JSONType, default=list)
+    notes: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    projects: Mapped[list["Project"]] = relationship(back_populates="brand")
+
+
 class Project(Base, TimestampMixin):
     __tablename__ = "projects"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    # brand_id es opcional a propósito: un proyecto puede existir sin
+    # marca asociada (prueba rápida, cliente nuevo sin brief todavía) —
+    # brand_name sigue siendo el campo de texto libre que ya existía,
+    # se conserva para no romper proyectos previos a esta migración.
+    brand_id: Mapped[str | None] = mapped_column(
+        ForeignKey("brands.id", ondelete="SET NULL"))
     brand_name: Mapped[str] = mapped_column(String(120), nullable=False)
     product_name: Mapped[str] = mapped_column(String(120), nullable=False)
     campaign_goal: Mapped[str | None] = mapped_column(String(60))
@@ -83,6 +121,7 @@ class Project(Base, TimestampMixin):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  default=_now, onupdate=_now)
 
+    brand: Mapped["Brand | None"] = relationship(back_populates="projects")
     artifacts: Mapped[list[Artifact]] = relationship(
         back_populates="project", cascade="all, delete-orphan")
     clips: Mapped[list[Clip]] = relationship(

@@ -205,3 +205,46 @@ pre.payload {
   font-size: 13px;
   margin-bottom: 12px;
 }
+
+/* --- marcas y pestañas de navegación --- */
+
+.pestanas-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.pestana-nav {
+  flex: 1;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  padding: 7px 0;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pestana-nav.activa { background: var(--panel-2); color: var(--text); }
+
+.tarjeta-marca {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.tarjeta-marca .campo { margin-bottom: 10px; font-size: 13px; }
+.tarjeta-marca .campo b { color: var(--text-dim); display:block; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
+.tarjeta-marca textarea[data-editable] { min-height: 70px; }
+
+.historial-campana {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+}
+.historial-campana:hover { color: var(--accent); }
