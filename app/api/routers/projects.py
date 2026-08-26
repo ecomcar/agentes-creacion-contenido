@@ -27,6 +27,12 @@ def create_project(body: ProjectCreate, session: Session = Depends(get_session))
     return proyecto
 
 
+@router.get("", response_model=list[ProjectOut])
+def list_projects(session: Session = Depends(get_session)):
+    """Los más recientes primero — lo que puebla la lista lateral del panel."""
+    return ProjectRepository(session).list_all()
+
+
 @router.get("/{code}", response_model=ProjectOut)
 def get_project(code: str, session: Session = Depends(get_session)):
     proyecto = ProjectRepository(session).by_code(code)

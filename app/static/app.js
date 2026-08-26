@@ -141,19 +141,24 @@ async function mostrarDetalleMarca(brandId) {
       <h2>${marca.name}</h2>
       <div class="campo">
         <b>Voz de marca</b>
-        <textarea id="edit-brand-voice" data-editable>${marca.brand_voice || ""}</textarea>
+        <textarea id="edit-brand-voice" data-editable
+          placeholder="ej. Cercana, de mujer a mujer, sin tecnicismos de vendedora"
+          >${marca.brand_voice || ""}</textarea>
       </div>
       <div class="campo">
         <b>Audiencia — edad</b>
-        <input id="edit-age-range" value="${marca.default_audience.age_range || ""}">
+        <input id="edit-age-range" placeholder="ej. 20-45"
+          value="${marca.default_audience.age_range || ""}">
       </div>
       <div class="campo">
         <b>Audiencia — ubicación</b>
-        <input id="edit-location" value="${marca.default_audience.location || ""}">
+        <input id="edit-location" placeholder="ej. Guayaquil"
+          value="${marca.default_audience.location || ""}">
       </div>
       <div class="campo">
         <b>Reclamos prohibidos</b>
-        <input id="edit-forbidden" value="${(marca.forbidden_claims || []).join(", ")}">
+        <input id="edit-forbidden" placeholder="ej. cura, elimina arrugas al instante"
+          value="${(marca.forbidden_claims || []).join(", ")}">
       </div>
       <button id="btn-guardar-marca">Guardar cambios</button>
     </div>
@@ -201,30 +206,36 @@ async function mostrarDetalleMarca(brandId) {
 // --------------------------------------------------------- lista lateral
 
 async function cargarListaProyectos() {
-  // No hay endpoint "listar todos" todavía — se muestra el que esté
-  // seleccionado y se deja el buscador manual como respaldo simple.
   const ul = document.getElementById("lista-proyectos");
-  if (!proyectoActual) {
+  let proyectos;
+  try {
+    proyectos = await api("/projects");
+  } catch {
     ul.innerHTML = `<li class="vacio" style="cursor:default;">
-      Escribe el código de un proyecto existente arriba, o crea uno nuevo.
-    </li>`;
+      No se pudo cargar la lista.</li>`;
     return;
   }
+
+  if (proyectos.length === 0) {
+    ul.innerHTML = `<li class="vacio" style="cursor:default;">
+      Ninguno todavía — crea el primero abajo.</li>`;
+    return;
+  }
+
+  ul.innerHTML = proyectos.map(p => `
+    <li data-code="${p.code}" class="${p.code === proyectoActual ? "activo" : ""}">
+      <div class="code">${p.code}</div>
+      <div class="marca">${p.brand_name} — ${p.product_name}</div>
+    </li>`).join("");
+
+  ul.querySelectorAll("li").forEach(li => li.addEventListener("click",
+    () => seleccionarProyecto(li.dataset.code)));
 }
 
 function seleccionarProyecto(code) {
   proyectoActual = code;
-  renderProyectoSeleccionado();
+  cargarListaProyectos();   // vuelve a pintar la lista real, resaltando el activo
   cargarProyecto();
-}
-
-function renderProyectoSeleccionado() {
-  const ul = document.getElementById("lista-proyectos");
-  if (!proyectoActual) return;
-  ul.innerHTML = `<li class="activo">
-    <div class="code">${proyectoActual}</div>
-    <div class="marca">seleccionado</div>
-  </li>`;
 }
 
 // --------------------------------------------------------- buscar proyecto

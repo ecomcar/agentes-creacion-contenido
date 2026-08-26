@@ -339,3 +339,113 @@ def test_listar_assets_de_un_clip_vacio(client):
 
 def test_seleccionar_asset_inexistente_da_404(client):
     assert client.post("/assets/no-existe/select").status_code == 404
+
+
+# ------------------------------------------------------------- marcas
+
+
+def test_crear_marca(client):
+    r = client.post("/brands", json={
+        "name": "Karol Salud y Cosmética",
+        "default_audience": {"age_range": "20-45", "location": "Guayaquil"},
+        "brand_voice": "Cercana, de mujer a mujer",
+        "forbidden_claims": ["cura"],
+    })
+    assert r.status_code == 201
+    assert r.json()["name"] == "Karol Salud y Cosmética"
+
+
+def test_crear_marca_duplicada_falla(client):
+    body = {"name": "Party Voom"}
+    client.post("/brands", json=body)
+    r = client.post("/brands", json=body)
+    assert r.status_code == 409
+
+
+def test_listar_marcas(client):
+    client.post("/brands", json={"name": "Alfa"})
+    client.post("/brands", json={"name": "Beta"})
+    r = client.get("/brands")
+    assert r.status_code == 200
+    assert len(r.json()) == 2
+
+
+def test_obtener_marca_inexistente_da_404(client):
+    assert client.get("/brands/no-existe").status_code == 404
+
+
+def test_actualizar_marca_parcialmente(client):
+    marca = client.post("/brands", json={
+        "name": "Karol", "brand_voice": "voz original"}).json()
+    r = client.patch(f"/brands/{marca['id']}",
+                     json={"brand_voice": "voz afinada"})
+    assert r.status_code == 200
+    assert r.json()["brand_voice"] == "voz afinada"
+
+
+def test_crear_proyecto_con_marca_valida(client):
+    marca = client.post("/brands", json={"name": "Karol"}).json()
+    r = client.post("/projects", json={
+        "code": "UGC-0001", "brand_name": "Karol", "product_name": "Seytu",
+        "brand_id": marca["id"]})
+    assert r.status_code == 201
+    assert r.json()["brand_id"] == marca["id"]
+
+
+def test_crear_proyecto_con_marca_inexistente_da_422(client):
+    r = client.post("/projects", json={
+        "code": "UGC-0001", "brand_name": "X", "product_name": "Y",
+        "brand_id": "no-existe"})
+    assert r.status_code == 422
+
+
+def test_proyecto_sin_marca_sigue_funcionando(client):
+    r = client.post("/projects", json={
+        "code": "UGC-0001", "brand_name": "Texto libre", "product_name": "Y"})
+    assert r.status_code == 201
+    assert r.json()["brand_id"] is None
+
+
+def test_historial_de_campanas_de_una_marca(client):
+    marca = client.post("/brands", json={"name": "Karol"}).json()
+    client.post("/projects", json={"code": "UGC-0001", "brand_name": "Karol",
+                                   "product_name": "Base", "brand_id": marca["id"]})
+    client.post("/projects", json={"code": "UGC-0002", "brand_name": "Karol",
+                                   "product_name": "Labial", "brand_id": marca["id"]})
+    client.post("/projects", json={"code": "UGC-0003", "brand_name": "Otra",
+                                   "product_name": "Z"})
+
+    r = client.get(f"/brands/{marca['id']}/projects")
+    assert r.status_code == 200
+    codigos = {p["code"] for p in r.json()}
+    assert codigos == {"UGC-0001", "UGC-0002"}
+
+
+def test_historial_de_marca_inexistente_da_404(client):
+    assert client.get("/brands/no-existe/projects").status_code == 404
+
+
+# --------------------------------------------------- listar proyectos
+
+
+def test_listar_proyectos_vacio(client):
+    assert client.get("/projects").json() == []
+
+
+def test_listar_proyectos_los_mas_recientes_primero(client):
+    client.post("/projects", json={"code": "UGC-0001", "brand_name": "A",
+                                   "product_name": "X"})
+    client.post("/projects", json={"code": "UGC-0002", "brand_name": "B",
+                                   "product_name": "Y"})
+    codigos = [p["code"] for p in client.get("/projects").json()]
+    assert codigos == ["UGC-0002", "UGC-0001"]
+
+
+def test_listar_proyectos_incluye_los_de_cualquier_marca_o_sin_marca(client):
+    marca = client.post("/brands", json={"name": "Karol"}).json()
+    client.post("/projects", json={"code": "UGC-0001", "brand_name": "Karol",
+                                   "product_name": "X", "brand_id": marca["id"]})
+    client.post("/projects", json={"code": "UGC-0002", "brand_name": "Suelto",
+                                   "product_name": "Y"})
+    codigos = {p["code"] for p in client.get("/projects").json()}
+    assert codigos == {"UGC-0001", "UGC-0002"}

@@ -160,6 +160,11 @@ class ProjectRepository:
         return self.session.scalars(
             select(Project).where(Project.code == code)).first()
 
+    def list_all(self, limit: int = 100) -> list[Project]:
+        """Los más recientes primero — es lo que ve el panel al arrancar."""
+        return list(self.session.scalars(
+            select(Project).order_by(Project.created_at.desc()).limit(limit)))
+
     def add_cost(self, project_id: str, cost_usd: float) -> Project:
         row = self.session.get(Project, project_id)
         if row is None:
