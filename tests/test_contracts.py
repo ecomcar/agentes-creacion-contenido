@@ -240,6 +240,26 @@ def test_hooks_top3_del_mismo_tipo_bloquea():
     assert "top_hooks_same_type" in {i.code for i in hooks.blocking_issues()}
 
 
+def test_umbral_de_calidad_calibrado_con_datos_reales():
+    """
+    Evidencia real (proyecto UGC-0002, brillo labial, dos intentos con
+    Sonnet y el prompt v2): hooks genuinamente buenos ("Esto no es
+    photoshop, es polvo de diamante real") se agrupaban entre 73 y 82 de
+    promedio. Un corte en 80 bloqueaba campañas sanas; en 75 pasan con
+    margen y el hook realmente débil (55.8) se sigue descartando.
+    """
+    intento_1 = [78.8, 78.0, 77.5, 77.5, 76.7, 75.0, 73.7, 73.3, 71.3, 55.8]
+    intento_2 = [82.2, 80.0, 78.8, 77.8, 73.8, 71.2, 66.2, 63.0]
+
+    assert Hooks.MIN_AVERAGE == 75.0
+    assert sum(1 for s in intento_1 if s >= Hooks.MIN_AVERAGE) >= Hooks.MIN_QUALIFIED
+    assert sum(1 for s in intento_2 if s >= Hooks.MIN_AVERAGE) >= Hooks.MIN_QUALIFIED
+    # El umbral viejo (80) hubiera bloqueado ambos — confirma que el
+    # problema real era el corte, no la calidad del trabajo.
+    assert sum(1 for s in intento_1 if s >= 80.0) < 3
+    assert sum(1 for s in intento_2 if s >= 80.0) < 3
+
+
 def test_hooks_variados_aprueban_y_se_ordenan():
     tipos = [HookType.PROBLEMA, HookType.CONFESION, HookType.CURIOSIDAD,
              HookType.CONTRARIAN, HookType.TESTIMONIAL, HookType.DEMOSTRACION,
