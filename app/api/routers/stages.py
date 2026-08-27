@@ -14,14 +14,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...agents import ProductInput
-from ...contracts import ArtifactType, Hooks, ResearchBrief, Strategy
-from ...db import ArtifactRepository, ProjectRepository
+from ...contracts import (
+    ArtifactType,
+    Hooks,
+    ResearchBrief,
+    Storyboard,
+    Strategy,
+    UGCScript,
+)
+from ...db import ArtifactRepository, ClipRepository, ProjectRepository
 from ...orchestrator import Orchestrator, ProjectState, Stage, StageStatus
 from ..deps import get_orchestrator, get_session
 from ..schemas import (
     RunHooksIn,
+    RunIdentityIn,
     RunResearchIn,
     RunScriptIn,
+    RunStoryboardIn,
     RunStrategyIn,
     StageIssueOut,
     StageResultOut,
@@ -112,6 +121,59 @@ def run_strategy(code: str, body: RunStrategyIn,
     return _persist_outcome(session, proyecto, state, out, Stage.STRATEGY)
 
 
+@router.post("/storyboard", response_model=StageResultOut)
+def run_storyboard(code: str, body: RunStoryboardIn,
+                   session: Session = Depends(get_session),
+                   orch: Orchestrator = Depends(get_orchestrator)):
+    proyecto = _project_or_404(code, session)
+    state = _state_from_project(proyecto)
+    if state.current_stage is not Stage.STORYBOARD:
+        raise HTTPException(409, f"El proyecto está en la etapa "
+                            f"'{state.current_stage.value}', no en "
+                            f"'storyboard'.")
+
+    script_row = ArtifactRepository(session).latest_approved(
+        proyecto.id, ArtifactType.UGC_SCRIPT)
+    if script_row is None:
+        raise HTTPException(409, "No hay un guion aprobado todavía.")
+    script = UGCScript.model_validate(script_row.payload)
+
+    out = orch.run_stage(state, Stage.STORYBOARD, script, feedback=body.feedback)
+    return _persist_outcome(session, proyecto, state, out, Stage.STORYBOARD)
+
+
+@router.post("/identity", response_model=StageResultOut)
+def run_identity(code: str, body: RunIdentityIn,
+                 session: Session = Depends(get_session),
+                 orch: Orchestrator = Depends(get_orchestrator)):
+    """
+    Etapa sin compuerta humana (no está en `HUMAN_GATES`): la identidad
+    del avatar se reutiliza en decenas de clips, así que el criterio que
+    manda es el contrato (imperfecciones mínimas, rasgos sin vaguedad),
+    no una revisión manual del texto. Por eso se auto-aprueba y avanza,
+    igual que 'research'.
+    """
+    proyecto = _project_or_404(code, session)
+    state = _state_from_project(proyecto)
+    if state.current_stage is not Stage.IDENTITY:
+        raise HTTPException(409, f"El proyecto está en la etapa "
+                            f"'{state.current_stage.value}', no en "
+                            f"'identity'.")
+
+    storyboard_row = ArtifactRepository(session).latest_approved(
+        proyecto.id, ArtifactType.STORYBOARD)
+    if storyboard_row is None:
+        raise HTTPException(409, "No hay un storyboard aprobado todavía.")
+    storyboard = Storyboard.model_validate(storyboard_row.payload)
+
+    out = orch.run_stage(state, Stage.IDENTITY,
+                         (storyboard, body.avatar_id, body.description),
+                         feedback=body.feedback)
+    if out.status is StageStatus.APPROVED:
+        orch.approve_and_advance(state)
+    return _persist_outcome(session, proyecto, state, out, Stage.IDENTITY)
+
+
 # Qué tipo de artefacto corresponde a cada etapa aprobable — un único
 # endpoint genérico sirve a las cuatro, en vez de repetir la misma lógica
 # de "aprobar y avanzar" por etapa (el error que se evitó aquí: la primera
@@ -122,6 +184,7 @@ STAGE_ARTIFACT_TYPE = {
     Stage.STRATEGY: ArtifactType.STRATEGY,
     Stage.HOOKS: ArtifactType.HOOKS,
     Stage.SCRIPT: ArtifactType.UGC_SCRIPT,
+    Stage.STORYBOARD: ArtifactType.STORYBOARD,
 }
 
 
@@ -154,6 +217,22 @@ def approve_current_stage(code: str, session: Session = Depends(get_session),
         raise HTTPException(404, "No hay artefacto pendiente para aprobar.")
 
     ArtifactRepository(session).approve(fila.id)
+
+    if state.current_stage is Stage.STORYBOARD:
+        # Nada en el sistema creaba filas de `clips` hasta ahora — se
+        # esperaba hacerlo a mano por `POST /clips`. El storyboard ya
+        # trae los mismos clip_id que el guion, así que aprobarlo es el
+        # momento natural para crear los que falten. Idempotente:
+        # `get_or_create` no duplica si el humano ya los había creado.
+        script_row = ArtifactRepository(session).latest_approved(
+            proyecto.id, ArtifactType.UGC_SCRIPT)
+        if script_row is not None:
+            clip_repo = ClipRepository(session)
+            for i, c in enumerate(script_row.payload.get("clips", [])):
+                clip_repo.get_or_create(
+                    proyecto.id, c["clip_id"], sequence_order=i + 1,
+                    role=c.get("role"), dialogue=c.get("dialogue"))
+
     etapa_anterior = state.current_stage
     orch.approve_and_advance(state)
     proyecto.current_stage = state.current_stage.value

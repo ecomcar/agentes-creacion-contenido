@@ -191,3 +191,90 @@ class RunScriptIn(BaseModel):
     hook_id: str = Field(pattern=r"^H\d{2}$")
     target_duration_sec: float = 35.0
     feedback: str | None = None
+
+
+class RunStoryboardIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    feedback: str | None = None
+
+
+class RunIdentityIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    avatar_id: str = Field(pattern=r"^AV-[A-Z]+-[A-Z]{2}-\d{3}$",
+                           description="ej. AV-FEMALE-EC-001")
+    description: str = Field(min_length=10)
+    feedback: str | None = None
+
+
+# -- imagen / video / voz: por clip, gasto real -----------------------
+
+
+class GenerateReferenceIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prompt_text: str | None = Field(
+        default=None,
+        description="Opcional: si se omite, se construye a partir de la "
+                    "ficha de identidad aprobada.")
+
+
+class GenerateImageIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    n_variants: int = Field(default=3, ge=1, le=8)
+    seed: int | None = None
+    feedback: str | None = None
+
+
+class GenerateVideoIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int | None = None
+    feedback: str | None = None
+
+
+class GenerateVoiceIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    voice_name: str | None = Field(
+        default=None,
+        description="Nombre de la biblioteca curada, ej. 'Daniela'. Si se "
+                    "omite, se usa el voice_id que decida el Agente 9.")
+    feedback: str | None = None
+
+
+class MediaGenerationOut(BaseModel):
+    """Lo que devuelve generar un prompt (7/8/9) + gastar de verdad."""
+    model_config = ConfigDict(extra="forbid")
+
+    clip_code: str
+    prompt_artifact: ArtifactOut
+    cost_prompt_usd: float
+    cost_generation_usd: float
+    assets: list[AssetOut] = Field(default_factory=list)
+    issues: list[StageIssueOut] = Field(default_factory=list)
+    job_id: str | None = None   # sólo video: sondear en .../video/jobs/{job_id}
+    message: str = ""
+
+
+class JobOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    clip_id: str | None
+    status: str
+    progress: float
+    result_url: str | None
+    cost_usd: float
+    error_message: str | None
+
+
+class AdvanceStageOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    stage: str
+    status: str
+    message: str
+    missing_clips: list[str] = Field(default_factory=list)

@@ -1,11 +1,11 @@
 """
 Aplicación FastAPI.
 
-Sólo cubre lo que ya está validado y probado: proyectos, clips, artefactos,
-assets, y las cuatro primeras etapas (agentes de texto 1-4). Imagen, video
-y voz no tienen endpoints todavía — sus servicios existen
-(Image/Video/AudioGenerationService) pero exponerlos por HTTP es el
-siguiente paso, no éste.
+Cubre proyectos, clips, artefactos, assets, las cuatro primeras etapas de
+texto (1-4), storyboard e identidad (5-6, vía la misma máquina de
+estados), y — desde esta entrega — imagen, video y voz por clip (7-9,
+`routers/media.py`), reutilizando Image/Video/AudioGenerationService.
+Montaje y auditoría (10-11) siguen sin endpoints todavía.
 """
 
 from __future__ import annotations
@@ -18,13 +18,14 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from ..gateway.types import BudgetExceeded, GatewayError, RepairFailed
-from .routers import artifacts, assets, brands, projects, stages
+from .routers import artifacts, assets, brands, media, projects, stages
 
 app = FastAPI(
     title="Sistema UGC — API",
-    description="Investigación, estrategia, hooks y guion para anuncios "
-               "UGC generados por IA.",
-    version="0.1.0",
+    description="Investigación, estrategia, hooks, guion, storyboard, "
+               "identidad, imagen, video y voz para anuncios UGC "
+               "generados por IA.",
+    version="0.2.0",
 )
 
 app.include_router(projects.router)
@@ -32,6 +33,7 @@ app.include_router(brands.router)
 app.include_router(artifacts.router)
 app.include_router(assets.router)
 app.include_router(stages.router)
+app.include_router(media.router)
 
 # Panel visual — página estática que habla con esta misma API. Se monta
 # DESPUÉS de los routers de la API para que /projects, /artifacts, etc.

@@ -335,17 +335,12 @@ function render(proyecto, clips, artefactos) {
     </div>
 
     <div class="zona">
-      <h2>Storyboard</h2>
-      <p class="proximamente">Próximamente — depende de imagen y video, todavía sin conectar a la API.</p>
-    </div>
-
-    <div class="zona">
       <h2>Auditor</h2>
       <p class="proximamente">Próximamente — depende del pipeline de video.</p>
     </div>
   `;
 
-  renderPanelAgente(proyecto, artefactos);
+  renderPanelAgente(proyecto, clips, artefactos);
 }
 
 // ------------------------------------------------------- panel del agente
@@ -356,7 +351,7 @@ function ultimoArtefacto(artefactos, tipo) {
   return filtrados.reduce((a, b) => (a.version > b.version ? a : b));
 }
 
-function renderPanelAgente(proyecto, artefactos) {
+function renderPanelAgente(proyecto, clips, artefactos) {
   const zona = document.getElementById("zona-agente");
   const etapa = proyecto.current_stage;
   const pendienteAprobacion = proyecto.stage_status === "pending_human_approval";
@@ -481,10 +476,73 @@ function renderPanelAgente(proyecto, artefactos) {
     return;
   }
 
+  if (etapa === "storyboard") {
+    if (!pendienteAprobacion) {
+      zona.innerHTML = `
+        <h2>Agente 5 · Storyboard</h2>
+        <p class="costo">Genera el storyboard a partir del guion aprobado.</p>
+        <div class="fila-botones">
+          <button id="btn-run-storyboard">Generar storyboard</button>
+        </div>
+        <div id="resultado-etapa"></div>
+      `;
+      document.getElementById("btn-run-storyboard").addEventListener("click",
+        () => correrEtapa("storyboard", {}));
+    } else {
+      zona.innerHTML = `<h2>Agente 5 · Storyboard</h2><div id="resultado-etapa"></div>`;
+      mostrarStoryboardParaAprobar(artefactos);
+    }
+    return;
+  }
+
+  if (etapa === "identity") {
+    zona.innerHTML = `
+      <h2>Agente 6 · Identidad del avatar</h2>
+      <p class="costo">Se aprueba solo — se reutiliza en todos los clips,
+      así que el criterio que manda es el contrato, no una revisión manual.</p>
+      <form id="form-identity">
+        <label>Avatar ID (ej. AV-FEMALE-EC-001)</label>
+        <input name="avatar_id" required pattern="AV-[A-Z]+-[A-Z]{2}-\\d{3}"
+               placeholder="AV-FEMALE-EC-001">
+        <label>Descripción</label>
+        <textarea name="description" rows="3" required
+          placeholder="ej. asesora cercana, tono de amiga, 30-34 años"></textarea>
+        <div class="fila-botones">
+          <button type="submit">Generar identidad</button>
+        </div>
+      </form>
+      <div id="resultado-etapa"></div>
+    `;
+    document.getElementById("form-identity").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const datos = Object.fromEntries(new FormData(e.target));
+      await correrEtapa("identity", datos);
+    });
+    return;
+  }
+
+  if (etapa === "image") {
+    renderEtapaMedios(proyecto, clips, "image",
+      "Agente 7 · Imagen", generarImagenClip);
+    return;
+  }
+
+  if (etapa === "video") {
+    renderEtapaMedios(proyecto, clips, "video",
+      "Agente 8 · Video", generarVideoClip);
+    return;
+  }
+
+  if (etapa === "voice") {
+    renderEtapaMedios(proyecto, clips, "voice",
+      "Agente 9 · Voz", generarVozClip);
+    return;
+  }
+
   zona.innerHTML = `
     <h2>Etapa: ${ETAPA_ES[etapa] || etapa}</h2>
-    <p class="proximamente">Esta etapa todavía no tiene panel — imagen, video,
-    voz y auditoría llegan en el siguiente paso del proyecto.</p>
+    <p class="proximamente">Esta etapa todavía no tiene panel — montaje y
+    auditoría llegan en el siguiente paso del proyecto.</p>
   `;
 }
 
@@ -545,6 +603,23 @@ function mostrarGuionParaAprobar(artefactos) {
         "${c.dialogue}"
       </div>`).join("")}
     <p style="margin-top:10px; font-size:13px;"><b>CTA:</b> ${script.payload.cta}</p>
+    ${botonesAprobarRechazar()}
+  `;
+  cablearAprobarRechazar();
+}
+
+function mostrarStoryboardParaAprobar(artefactos) {
+  const storyboard = ultimoArtefacto(artefactos, "storyboard");
+  if (!storyboard) return;
+  const div = document.getElementById("resultado-etapa");
+  div.innerHTML = `
+    <p class="costo" style="margin-top:14px;">Clips del storyboard:</p>
+    ${storyboard.payload.clips.map(c => `
+      <div style="font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);">
+        <b>${c.clip_id}</b> — <i>${c.shot_type}</i> en ${c.scenario}<br>
+        ${c.action_summary}
+        ${c.product_visible ? '<span class="badge approved" style="margin-left:6px;">producto visible</span>' : ""}
+      </div>`).join("")}
     ${botonesAprobarRechazar()}
   `;
   cablearAprobarRechazar();
@@ -614,6 +689,268 @@ async function correrEtapa(nombre, datos) {
     }
   } catch (err) {
     resultado.innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+// ------------------------------------------------ etapas de medios (7-9)
+
+const VOCES_CURADAS = ["Daniela", "Valeria", "Sandra", "Kate",
+                       "Juan", "Brian", "Luis", "JC"];
+
+function assetKindFor(etapaKind) {
+  return etapaKind === "voice" ? "audio" : etapaKind;
+}
+
+function renderEtapaMedios(proyecto, clips, etapaKind, titulo, generarFn) {
+  const zona = document.getElementById("zona-agente");
+  zona.innerHTML = `<h2>${titulo}</h2><div id="medios-contenido">Cargando…</div>`;
+  cargarEtapaMedios(proyecto, clips, etapaKind, generarFn);
+}
+
+async function cargarEtapaMedios(proyecto, clips, etapaKind, generarFn) {
+  const cont = document.getElementById("medios-contenido");
+  if (clips.length === 0) {
+    cont.innerHTML = `<p class="vacio">Sin clips todavía — aparecen al
+      aprobar el storyboard.</p>`;
+    return;
+  }
+
+  const assetKind = assetKindFor(etapaKind);
+
+  let refHtml = "";
+  if (etapaKind === "image") {
+    refHtml = `
+      <div class="zona-referencia">
+        <p class="costo">Imagen de referencia del avatar (una sola vez,
+        se reutiliza anclando la identidad en cada clip):</p>
+        <div id="referencia-avatar">
+          <button id="btn-generar-referencia">Generar / verificar referencia</button>
+        </div>
+      </div>`;
+  }
+
+  const porClip = await Promise.all(clips.map(c =>
+    api(`/projects/${proyectoActual}/clips/${c.code}/assets?kind=${assetKind}`)
+      .then(assets => ({ clip: c, assets }))
+      .catch(() => ({ clip: c, assets: [] }))));
+
+  cont.innerHTML = `
+    ${refHtml}
+    <div class="lista-clips-medios">
+      ${porClip.map(({ clip, assets }) =>
+        renderClipMedio(clip, assets, etapaKind)).join("")}
+    </div>
+    <div class="fila-botones" style="margin-top:16px;">
+      <button id="btn-avanzar-etapa" class="secundario">Avanzar a la siguiente etapa</button>
+    </div>
+    <div id="resultado-avance"></div>
+  `;
+
+  if (etapaKind === "image") {
+    document.getElementById("btn-generar-referencia").addEventListener("click", async (e) => {
+      const boton = e.target;
+      boton.disabled = true;
+      boton.textContent = "Generando…";
+      try {
+        const asset = await api(`/projects/${proyectoActual}/avatar/reference`, {
+          method: "POST", body: JSON.stringify({}),
+        });
+        document.getElementById("referencia-avatar").innerHTML = `
+          <img class="miniatura-referencia" src="${asset.storage_url}">
+          <span class="costo">$${asset.cost_usd.toFixed(4)}</span>`;
+      } catch (err) {
+        alert("No se pudo generar la referencia: " + err.message);
+        boton.disabled = false;
+        boton.textContent = "Generar / verificar referencia";
+      }
+    });
+  }
+
+  cont.querySelectorAll(".btn-generar-medio").forEach(btn =>
+    btn.addEventListener("click", () => generarFn(btn.dataset.clip, btn)));
+
+  cont.querySelectorAll(".btn-seleccionar-variante").forEach(btn =>
+    btn.addEventListener("click", async () => {
+      try {
+        await api(`/assets/${btn.dataset.asset}/select`, { method: "POST" });
+        await cargarProyecto();
+      } catch (err) {
+        alert("No se pudo seleccionar: " + err.message);
+      }
+    }));
+
+  document.getElementById("btn-avanzar-etapa").addEventListener("click", async () => {
+    const div = document.getElementById("resultado-avance");
+    div.innerHTML = `<p class="costo">Comprobando…</p>`;
+    try {
+      const salida = await api(`/projects/${proyectoActual}/stages/advance`,
+        { method: "POST" });
+      if (salida.status === "blocked") {
+        div.innerHTML = `<div class="issue blocking">Faltan clips con
+          ${assetKind} elegido: ${salida.missing_clips.join(", ")}</div>`;
+      } else {
+        await cargarProyecto();
+      }
+    } catch (err) {
+      div.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  });
+}
+
+function renderClipMedio(clip, assets, etapaKind) {
+  const seleccionado = assets.find(a => a.is_selected);
+  const variantes = assets.filter(a => !a.is_selected);
+
+  let previsualizacion = "";
+  if (seleccionado) {
+    if (etapaKind === "image") {
+      previsualizacion = `<img class="miniatura-clip" src="${seleccionado.storage_url}">`;
+    } else if (etapaKind === "video") {
+      previsualizacion = `<video class="miniatura-clip" src="${seleccionado.storage_url}"
+        controls muted></video>`;
+    } else {
+      previsualizacion = `<audio src="${seleccionado.storage_url}" controls></audio>`;
+    }
+  }
+
+  const controlVoz = etapaKind === "voice" ? `
+    <select class="select-voz" data-clip="${clip.code}" style="width:auto; display:inline-block;">
+      ${VOCES_CURADAS.map(v => `<option value="${v}">${v}</option>`).join("")}
+    </select>` : "";
+
+  return `
+    <div class="clip-medio" data-clip="${clip.code}">
+      <div class="clip-medio-cabecera">
+        <div>
+          <b>${clip.code}</b> ${clip.role ? `— <i>${clip.role}</i>` : ""}<br>
+          <span style="color:var(--text-dim); font-size:12px;">${clip.dialogue || "(sin diálogo)"}</span>
+        </div>
+        <div>
+          ${controlVoz}
+          <button class="btn-generar-medio secundario chico" data-clip="${clip.code}">
+            ${seleccionado ? "Regenerar" : "Generar"}
+          </button>
+        </div>
+      </div>
+      ${previsualizacion}
+      ${variantes.length > 0 ? `
+        <p class="costo" style="margin-top:8px;">Variantes sin elegir:</p>
+        <div class="variantes-grid">
+          ${variantes.map(a => `
+            <div class="variante">
+              ${etapaKind === "image"
+                ? `<img src="${a.storage_url}">`
+                : `<span style="font-size:11px;">v${a.version}</span>`}
+              <button class="btn-seleccionar-variante chico" data-asset="${a.id}">Elegir</button>
+            </div>`).join("")}
+        </div>` : ""}
+      <div id="resultado-medio-${clip.code}"></div>
+    </div>
+  `;
+}
+
+// -- generar: imagen --
+
+async function generarImagenClip(clipCode, boton) {
+  boton.disabled = true;
+  const div = document.getElementById(`resultado-medio-${clipCode}`);
+  div.innerHTML = `<p class="costo">Generando imagen…</p>`;
+  try {
+    const salida = await api(`/projects/${proyectoActual}/clips/${clipCode}/image`, {
+      method: "POST", body: JSON.stringify({ n_variants: 3 }),
+    });
+    if (salida.issues?.some(i => i.severity === "blocking")) {
+      div.innerHTML = salida.issues.map(i =>
+        `<div class="issue ${i.severity}"><b>${i.code}</b>: ${i.message}</div>`).join("")
+        + `<p class="costo">${salida.message}</p>`;
+      boton.disabled = false;
+    } else {
+      await cargarProyecto();
+    }
+  } catch (err) {
+    div.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    boton.disabled = false;
+  }
+}
+
+// -- generar: video (asíncrono, con sondeo) --
+
+async function generarVideoClip(clipCode, boton) {
+  boton.disabled = true;
+  const div = document.getElementById(`resultado-medio-${clipCode}`);
+  div.innerHTML = `<p class="costo">Encolando video…</p>`;
+  try {
+    const salida = await api(`/projects/${proyectoActual}/clips/${clipCode}/video`, {
+      method: "POST", body: JSON.stringify({}),
+    });
+    if (salida.issues?.some(i => i.severity === "blocking")) {
+      div.innerHTML = salida.issues.map(i =>
+        `<div class="issue ${i.severity}"><b>${i.code}</b>: ${i.message}</div>`).join("");
+      boton.disabled = false;
+      return;
+    }
+    if (!salida.job_id) {
+      div.innerHTML = `<div class="error-msg">${salida.message}</div>`;
+      boton.disabled = false;
+      return;
+    }
+    div.innerHTML = `<p class="costo">Generándose, puede tardar 1-3 minutos…
+      <span id="progreso-${clipCode}">0%</span></p>`;
+    sondearVideo(clipCode, salida.job_id);
+  } catch (err) {
+    div.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    boton.disabled = false;
+  }
+}
+
+function sondearVideo(clipCode, jobId) {
+  const intervalo = setInterval(async () => {
+    let job;
+    try {
+      job = await api(`/projects/${proyectoActual}/clips/${clipCode}/video/jobs/${jobId}`);
+    } catch {
+      clearInterval(intervalo);
+      return;
+    }
+    const span = document.getElementById(`progreso-${clipCode}`);
+    if (span) span.textContent = `${Math.round(job.progress * 100)}%`;
+
+    if (job.status === "succeeded") {
+      clearInterval(intervalo);
+      await cargarProyecto();
+    } else if (job.status === "failed" || job.status === "abandoned") {
+      clearInterval(intervalo);
+      const div = document.getElementById(`resultado-medio-${clipCode}`);
+      if (div) div.innerHTML = `<div class="error-msg">Video falló:
+        ${job.error_message || "sin detalle"}</div>`;
+    }
+  }, 4000);
+}
+
+// -- generar: voz --
+
+async function generarVozClip(clipCode, boton) {
+  const select = document.querySelector(`.select-voz[data-clip="${clipCode}"]`);
+  const vozElegida = select ? select.value : null;
+
+  boton.disabled = true;
+  const div = document.getElementById(`resultado-medio-${clipCode}`);
+  div.innerHTML = `<p class="costo">Generando voz…</p>`;
+  try {
+    const salida = await api(`/projects/${proyectoActual}/clips/${clipCode}/voice`, {
+      method: "POST",
+      body: JSON.stringify(vozElegida ? { voice_name: vozElegida } : {}),
+    });
+    if (salida.issues?.some(i => i.severity === "blocking")) {
+      div.innerHTML = salida.issues.map(i =>
+        `<div class="issue ${i.severity}"><b>${i.code}</b>: ${i.message}</div>`).join("");
+      boton.disabled = false;
+    } else {
+      await cargarProyecto();
+    }
+  } catch (err) {
+    div.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    boton.disabled = false;
   }
 }
 

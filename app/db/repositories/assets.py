@@ -10,7 +10,7 @@ sólo hace el `UPDATE` que la base aceptará o rechazará.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import AssetRow
@@ -19,6 +19,31 @@ from ..models import AssetRow
 class AssetRepository:
     def __init__(self, session: Session):
         self.session = session
+
+    def total_cost(self, project_id: str, kind: str,
+                   clip_id: str | None = "__any__") -> float:
+        """
+        Suma de `cost_usd` ya gastado, para hidratar los contadores en
+        memoria de los servicios de generación (`spent_by_project`,
+        `spent_by_clip`) al arrancar una request nueva.
+
+        Sin esto, un reinicio del servidor —o un segundo worker— perdería
+        de vista el gasto ya hecho y los topes de presupuesto dejarían de
+        proteger nada, exactamente el problema que `image_price` y compañía
+        existen para evitar.
+
+        `clip_id="__any__"` (el valor por defecto) suma TODO el proyecto,
+        para hidratar `spent_by_project`. Pasar `None` explícito filtra a
+        sólo los assets de nivel-proyecto (la referencia del avatar);
+        pasar un id de clip filtra a ese clip, para `spent_by_clip`.
+        """
+        stmt = select(func.sum(AssetRow.cost_usd)).where(
+            AssetRow.project_id == project_id, AssetRow.kind == kind)
+        if clip_id != "__any__":
+            stmt = stmt.where(AssetRow.clip_id.is_(clip_id) if clip_id is None
+                              else AssetRow.clip_id == clip_id)
+        total = self.session.scalar(stmt)
+        return round(total or 0.0, 6)
 
     def next_version(self, project_id: str, clip_id: str | None,
                      kind: str) -> int:
