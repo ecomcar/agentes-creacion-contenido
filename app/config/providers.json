@@ -1,0 +1,201 @@
+{
+  "image_providers": [
+    {
+      "name": "gemini_nano_flash_image",
+      "tier": "completely_free",
+      "priority": 1,
+      "enabled": true,
+      "api_key_env": "GOOGLE_GENERATIVE_AI_KEY",
+      "max_retries": 1,
+      "timeout_seconds": 30,
+      "metadata": {
+        "quota_per_day": 500,
+        "model": "gemini-2.5-flash-image",
+        "setup_url": "https://aistudio.google.com",
+        "cost_per_image_usd": 0.0,
+        "note": "Sin tarjeta. 500 req/día renovable"
+      }
+    },
+    {
+      "name": "cloudflare_workers_ai_flux",
+      "tier": "completely_free",
+      "priority": 2,
+      "enabled": true,
+      "api_key_env": "CLOUDFLARE_API_TOKEN",
+      "max_retries": 1,
+      "timeout_seconds": 30,
+      "metadata": {
+        "quota_per_day": 2000,
+        "neurons_per_day": 10000,
+        "model": "FLUX.1-schnell",
+        "setup_url": "https://dash.cloudflare.com",
+        "cost_per_image_usd": 0.0,
+        "note": "Fallback. 10K Neurons/día renovable 00:00 UTC"
+      }
+    },
+    {
+      "name": "pollinations_flux",
+      "tier": "completely_free",
+      "priority": 3,
+      "enabled": true,
+      "api_key_env": null,
+      "max_retries": 1,
+      "timeout_seconds": 30,
+      "metadata": {
+        "quota_per_day": "unlimited",
+        "model": "FLUX.1-schnell",
+        "setup_url": "https://pollinations.ai",
+        "cost_per_image_usd": 0.0,
+        "note": "Sin setup. Fair-use ilimitado"
+      }
+    }
+  ],
+
+  "video_providers": [
+    {
+      "name": "kling_ai_3_0",
+      "tier": "completely_free",
+      "priority": 1,
+      "enabled": true,
+      "api_key_env": "KLING_API_KEY",
+      "max_retries": 1,
+      "timeout_seconds": 60,
+      "metadata": {
+        "quota_per_day": 66,
+        "credits_per_5sec_video": 10,
+        "max_duration_seconds": 5,
+        "resolution": "720p",
+        "setup_url": "https://kling.kuaishou.com",
+        "cost_per_video_usd": 0.0,
+        "renovable_daily": true,
+        "note": "ÚNICO con crédito renovable real. 66 créditos/día = 6-7 videos de 5seg"
+      }
+    },
+    {
+      "name": "pika_2_1",
+      "tier": "completely_free",
+      "priority": 2,
+      "enabled": true,
+      "api_key_env": "PIKA_API_KEY",
+      "max_retries": 1,
+      "timeout_seconds": 60,
+      "metadata": {
+        "quota_per_day": 150,
+        "resolution": "1080p",
+        "setup_url": "https://pika.art",
+        "cost_per_video_usd": 0.0,
+        "renovable_daily": true,
+        "note": "Mejor calidad que Kling. Fallback"
+      }
+    },
+    {
+      "name": "seedance_2_0",
+      "tier": "completely_free",
+      "priority": 3,
+      "enabled": true,
+      "api_key_env": "SEEDANCE_API_KEY",
+      "max_retries": 1,
+      "timeout_seconds": 60,
+      "metadata": {
+        "quota_per_day": 100,
+        "resolution": "1080p",
+        "setup_url": "https://www.seedance.tv",
+        "cost_per_video_usd": 0.0,
+        "renovable_daily": true,
+        "quality_elo_rank": 1,
+        "note": "Mejor calidad según tests ELO. Fallback terciario"
+      }
+    }
+  ],
+
+  "voice_providers": [
+    {
+      "name": "kokoro_tts_82m_open_source",
+      "tier": "completely_free",
+      "priority": 1,
+      "enabled": true,
+      "api_key_env": null,
+      "max_retries": 1,
+      "timeout_seconds": 15,
+      "metadata": {
+        "quota_per_day": "unlimited",
+        "model": "kokoro-82m",
+        "voices": [
+          {
+            "id": "es_Ana",
+            "language": "Spanish",
+            "accent": "Latin American",
+            "gender": "Female",
+            "neutrality": "neutral"
+          },
+          {
+            "id": "es_Diego",
+            "language": "Spanish",
+            "accent": "Latin American",
+            "gender": "Male",
+            "neutrality": "neutral"
+          },
+          {
+            "id": "es_Elena",
+            "language": "Spanish",
+            "accent": "Latin American",
+            "gender": "Female",
+            "neutrality": "neutral"
+          }
+        ],
+        "setup_url": "https://github.com/hexgrad/kokoro",
+        "cost_per_audio_usd": 0.0,
+        "license": "Apache 2.0",
+        "deployment_options": [
+          "Local (pip install kokoro)",
+          "Browser (unrealspeech.com/studio)",
+          "API (via fal.ai)"
+        ],
+        "note": "#1 en TTS Spaces Arena 2026. Open-source, 82M params, 24kHz calidad"
+      }
+    },
+    {
+      "name": "elevenlabs_spanish",
+      "tier": "completely_free",
+      "priority": 2,
+      "enabled": true,
+      "api_key_env": "ELEVENLABS_API_KEY",
+      "max_retries": 1,
+      "timeout_seconds": 15,
+      "metadata": {
+        "quota_per_month_chars": 10000,
+        "voices": ["multiple Spanish/Latin American"],
+        "setup_url": "https://elevenlabs.io",
+        "cost_per_audio_usd": 0.0,
+        "renovable_monthly": true,
+        "quality": "highest",
+        "note": "Fallback si Kokoro falla. Mejor calidad pero cuota limitada"
+      }
+    }
+  ],
+
+  "fallback_strategy": {
+    "image": {
+      "on_failure": "try_next_priority",
+      "max_total_attempts": 3,
+      "stop_on_success": true
+    },
+    "video": {
+      "on_failure": "try_next_priority",
+      "max_total_attempts": 3,
+      "stop_on_success": true
+    },
+    "voice": {
+      "on_failure": "try_next_priority",
+      "max_total_attempts": 2,
+      "stop_on_success": true
+    }
+  },
+
+  "budget_guardrails": {
+    "per_project_usd": 1.0,
+    "per_clip_usd": 0.20,
+    "allow_paid_tier_if_exceeds_free_quota": false,
+    "note": "Con proveedores gratuitos, nunca debería llegar a pago"
+  }
+}
